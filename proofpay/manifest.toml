@@ -1,0 +1,6 @@
+name = "proofpay-eurc"
+version = "0.1.0"
+description = "Human-approved, non-custodial EURC payment requests bound to deliverable hashes and reconciled on Solana."
+author = "Luca Chianese"
+capabilities = ["skill"]
+permissions = []

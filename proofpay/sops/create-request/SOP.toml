@@ -1,0 +1,13 @@
+[sop]
+name = "proofpay-create-request"
+description = "Preview and create one non-custodial EURC Solana Pay request only after an out-of-band operator approval."
+version = "0.1.0"
+priority = "normal"
+execution_mode = "supervised"
+cooldown_secs = 0
+max_concurrent = 1
+deterministic = false
+agent = "proofpay"
+
+[[triggers]]
+type = "manual"

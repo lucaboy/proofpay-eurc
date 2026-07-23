@@ -1,0 +1,16 @@
+{
+  "name": "proofpay-eurc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:superteam && npm run test:proofpay",
+    "test:superteam": "node tests/run-tests.mjs",
+    "test:proofpay": "node proofpay/tests/run-tests.mjs",
+    "agent": "node scripts/superteam-agent.mjs",
+    "proofpay": "node proofpay/tools/proofpay.mjs"
+  },
+  "engines": {
+    "node": ">=16.10"
+  }
+}

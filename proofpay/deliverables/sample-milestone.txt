@@ -1,0 +1,14 @@
+ProofPay EURC sample milestone
+================================
+
+Project: Atlas accessibility review
+Milestone: M1 — keyboard navigation findings
+Revision: 1
+
+Acceptance criteria:
+- Findings cover the agreed five screens.
+- Each finding includes severity and a reproducible path.
+- The final report contains no customer credentials or personal data.
+
+This deliberately non-sensitive file is used only to demonstrate that a
+payment request can commit to exact deliverable bytes through SHA-256.

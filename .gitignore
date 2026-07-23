@@ -1,0 +1,12 @@
+.secrets/
+.tools/
+.runtime/
+node_modules/
+dist/
+coverage/
+tmp/
+proofpay/data/
+proofpay/evidence/
+proofpay/deliverables/*
+!proofpay/deliverables/sample-milestone.txt
+.DS_Store

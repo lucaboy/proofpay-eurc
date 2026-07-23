@@ -1,0 +1,17 @@
+[sop]
+name = "proofpay-reconcile"
+description = "Read-only bounded reconciliation of pending ProofPay EURC requests against finalized Solana transaction data."
+version = "0.1.0"
+priority = "low"
+execution_mode = "auto"
+cooldown_secs = 900
+max_concurrent = 1
+deterministic = false
+agent = "proofpay"
+
+[[triggers]]
+type = "manual"
+
+[[triggers]]
+type = "cron"
+expression = "*/15 * * * *"

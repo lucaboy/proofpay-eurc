@@ -1,0 +1,186 @@
+# ZeroClaw v0.8.3 isolated no-payment demo for ProofPay EURC.
+#
+# Copy this file to .runtime/<instance>/config.toml with
+# proofpay/demo/prepare-zeroclaw-demo.sh. Do not point workspace.path at the
+# checkout: omitting that override makes stock ZeroClaw derive the dedicated
+# workspace at <config-dir>/agents/proofpay/workspace.
+#
+# This profile exposes the reviewed SOP controls and four fixed demo tools.
+# Raw shell, Node, sh, arbitrary commands, generic file tools, HTTP, and
+# browsers remain outside the model-visible surface. The fixed tools elevate
+# only fully constant, manifest-locked helper commands. This file contains no
+# key, token, wallet seed, or private key.
+
+locale = "en"
+schema_version = 3
+
+[agents.proofpay]
+model_provider = "openai.proofpay"
+risk_profile = "proofpay"
+runtime_profile = "proofpay"
+skill_bundles = ["proofpay"]
+
+[agents.proofpay.identity]
+format = "openclaw"
+
+[agents.proofpay.workspace]
+# No path override: keep the agent in the config-dir-owned workspace.
+unrestricted_filesystem = false
+read_memory_from = []
+
+[providers.models.openai.proofpay]
+model = "gpt-5.4"
+wire_api = "responses"
+requires_openai_auth = true
+
+[risk_profiles.proofpay]
+# The helper is a shebang executable. ZeroClaw v0.8.3 compares a path-like
+# allowlist entry with the executable token exactly. A basename-only entry
+# would admit an untrusted same-named executable elsewhere in the workspace.
+# Raw shell is intentionally absent from allowed_tools: only constant commands
+# locked by the four proofpay-demo wrappers can reach this executable.
+allowed_commands = ["./proofpay/tools/proofpay.mjs"]
+allowed_roots = []
+allowed_tools = [
+  "sop_list",
+  "sop_execute",
+  "sop_advance",
+  "sop_approve",
+  "sop_status",
+  "proofpay-demo__hash_sample",
+  "proofpay-demo__preview_sample",
+  "proofpay-demo__create_sample_request",
+  "proofpay-demo__list_local_requests",
+]
+excluded_tools = [
+  "browser",
+  "browser_delegate",
+  "browser_open",
+  "content_search",
+  "file_download",
+  "file_edit",
+  "file_read",
+  "file_upload",
+  "file_upload_bundle",
+  "file_write",
+  "glob_search",
+  "http_request",
+  "mcp_prompts",
+  "mcp_resources",
+  "text_browser",
+  "tool_search",
+  "web_fetch",
+  "web_search",
+]
+always_ask = ["proofpay-demo__create_sample_request"]
+# Only the three fixed read-only/non-persistent tools are auto-approved. The
+# one persistent fixed devnet request always requires operator approval.
+auto_approve = [
+  "sop_list",
+  "sop_status",
+  "proofpay-demo__hash_sample",
+  "proofpay-demo__preview_sample",
+  "proofpay-demo__list_local_requests",
+]
+block_high_risk_commands = true
+forbidden_paths = [
+  ".secrets",
+  "~/.aws",
+  "~/.codex",
+  "~/.config",
+  "~/.gnupg",
+  "~/.ssh",
+  "~/.zeroclaw",
+]
+level = "supervised"
+require_approval_for_medium_risk = true
+shell_env_passthrough = []
+# Distributed default: keep the OS sandbox enabled. The preparation script can
+# change only a copied macOS `/private/tmp` runtime when the operator explicitly
+# passes --local-no-os-sandbox; that local recording fallback must not be
+# deployed or shared.
+sandbox_enabled = true
+sandbox_backend = "auto"
+workspace_only = true
+
+[runtime]
+kind = "native"
+reasoning_enabled = true
+reasoning_effort = "medium"
+
+[runtime_profiles.proofpay]
+compact_context = false
+keep_tool_context_turns = 2
+max_actions_per_hour = 30
+max_context_tokens = 32000
+max_cost_per_day_cents = 500
+max_history_messages = 40
+max_tool_iterations = 6
+max_tool_result_chars = 30000
+parallel_tools = false
+shell_timeout_secs = 30
+tool_call_dedup_exempt = []
+tool_dispatcher = "auto"
+
+[plugins]
+enabled = false
+
+[mcp]
+enabled = false
+
+[skills]
+allow_scripts = false
+open_skills_enabled = false
+prompt_injection_mode = "full"
+
+[skill_bundles.proofpay]
+
+[scheduler]
+enabled = false
+max_concurrent = 1
+
+[sop]
+# An empty, present override enables the SOP loader while selecting ZeroClaw's
+# config-data default. The preparation script copies only the reviewed SOPs to
+# <config-dir>/data/sops. Their general dynamic shell steps are documentation
+# for an operator-managed deployment; this locked demo profile exposes no raw
+# shell and can execute only its four fixed proofpay-demo wrappers.
+sops_dir = ""
+default_execution_mode = "supervised"
+approval_mode = "out_of_band_required"
+approval_timeout_action = "escalate"
+approval_timeout_secs = 0
+max_concurrent_total = 1
+max_step_retries = 1
+max_step_visits = 12
+procedural_memory_enabled = false
+step_schema_enforce = true
+step_scope_enforce = true
+untrusted_frame_warning = true
+untrusted_guard_sensitivity = 0.8
+untrusted_input_guard = "block"
+untrusted_outbound_redact = true
+untrusted_payload_max_bytes = 4096
+
+[http_request]
+enabled = false
+
+[web_fetch]
+enabled = false
+
+[web_search]
+enabled = false
+
+[browser]
+enabled = false
+
+[browser_delegate]
+enabled = false
+
+[text_browser]
+enabled = false
+
+[channels]
+cli = true
+max_concurrent_per_channel = 1
+show_tool_calls = true

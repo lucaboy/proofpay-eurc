@@ -1,0 +1,42 @@
+[skill]
+name = "proofpay-demo"
+description = "Run fixed ProofPay demonstrations whose outputs must be treated as the sole source of hashes, references, mints, and Solana Pay URIs."
+version = "0.1.0"
+author = "Luca Chianese"
+tags = ["solana", "eurc", "demo", "bounded", "non-custodial"]
+prompts = [
+  "Use these fixed tools only for the reproducible devnet sample. Never invent, calculate, shorten, or replace their outputs. The sample recipient is a deterministic public test key with no represented controller or private key. Only create_sample_request persists state, only after operator approval, and its complete command and preview-match values are locked in this manifest. No tool can sign, submit, send, refund, or move funds."
+]
+
+[[tools]]
+name = "hash_sample"
+description = "Compute the actual SHA-256 of the committed opaque sample deliverable without persisting state."
+kind = "builtin"
+target = "shell"
+# Required by the v0.8.3 static manifest audit; unused for builtin tools.
+command = ""
+locked_args = { command = "./proofpay/tools/proofpay.mjs hash --deliverable sample-milestone.txt" }
+
+[[tools]]
+name = "preview_sample"
+description = "Generate the actual non-persistent devnet ProofPay preview for the fixed canonical demo-atlas-m1 sample; it cannot sign, submit, or move funds."
+kind = "builtin"
+target = "shell"
+command = ""
+locked_args = { command = "./proofpay/tools/proofpay.mjs preview --invoice demo-atlas-m1 --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 --amount 12.50 --network devnet --deliverable sample-milestone.txt" }
+
+[[tools]]
+name = "create_sample_request"
+description = "Persist the one fixed canonical demo-atlas-m1 devnet request after explicit operator approval; all terms and all three preview-match values are hard-locked, and the helper cannot sign or move funds."
+kind = "builtin"
+target = "shell"
+command = ""
+locked_args = { command = "./proofpay/tools/proofpay.mjs create --invoice 'demo-atlas-m1' --recipient 'CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8' --amount '12.50' --network 'devnet' --deliverable 'sample-milestone.txt' --approve-digest '4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8' --approve-reference '3MzQWeqjrBA4ujyDGXB9emg8hVJRTHd3Yyvi4pMjZpsn' --approve-uri 'solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=12.5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=3MzQWeqjrBA4ujyDGXB9emg8hVJRTHd3Yyvi4pMjZpsn&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m1&memo=PROOFPAY%3Ademo-atlas-m1%3A4a3adafc3eeaa167'" }
+
+[[tools]]
+name = "list_local_requests"
+description = "Read the bounded local ProofPay request ledger as JSON without querying a wallet or changing state."
+kind = "builtin"
+target = "shell"
+command = ""
+locked_args = { command = "./proofpay/tools/proofpay.mjs list --json" }
