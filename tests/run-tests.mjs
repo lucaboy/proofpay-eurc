@@ -257,6 +257,36 @@ await test("filters stale listings and orders actionable work", async () => {
   );
 });
 
+await test("orders equal listings by the live API submission count", async () => {
+  const deadline = "2026-08-01T00:00:00.000Z";
+  const listings = [
+    {
+      title: "Crowded",
+      status: "OPEN",
+      deadline,
+      isWinnersAnnounced: false,
+      rewardAmount: 1_000,
+      _count: { Submission: 9 },
+    },
+    {
+      title: "Quieter",
+      status: "OPEN",
+      deadline,
+      isWinnersAnnounced: false,
+      rewardAmount: 1_000,
+      _count: { Submission: 1 },
+    },
+  ];
+
+  assert.deepEqual(
+    filterActionableListings(
+      { listings },
+      { now: new Date("2026-07-23T00:00:00.000Z") },
+    ).map((listing) => listing.title),
+    ["Quieter", "Crowded"],
+  );
+});
+
 await test("registers without leaking credentials in the result", async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "superteam-agent-"));
   const secretsPath = path.join(directory, ".secrets", "agent.json");

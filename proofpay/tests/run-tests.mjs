@@ -46,6 +46,14 @@ const execFileAsync = promisify(execFile);
 const proofPayCli = fileURLToPath(
   new URL("../tools/proofpay.mjs", import.meta.url),
 );
+const liveEvidencePath = fileURLToPath(
+  new URL("../demo/live-evidence/evidence.json", import.meta.url),
+);
+const liveDeliverablePath = fileURLToPath(
+  new URL("../deliverables/sample-milestone.txt", import.meta.url),
+);
+const LIVE_SIGNATURE =
+  "5Du1jycfRHexow5gWCpFoVyKtj26N2ika6W7DzFj7PS3V3k1AsX1TFY2psJsnmCT6Aknk4T2YLkc4MJUy3qYya6R";
 
 function test(name, fn) {
   tests.push({ name, fn });
@@ -392,6 +400,17 @@ test("offline evidence verifier recomputes the artifact digest and canonical ter
   );
 });
 
+test("committed live devnet evidence verifies from a clean checkout", async () => {
+  const verified = await verifyEvidence({
+    evidencePath: liveEvidencePath,
+    deliverablePath: liveDeliverablePath,
+  });
+  assert.equal(verified.ok, true);
+  assert.equal(verified.invoiceId, "demo-atlas-m2");
+  assert.equal(verified.paymentSignature, LIVE_SIGNATURE);
+  assert.equal(verified.scope.onChainLookupPerformed, false);
+});
+
 test("offline evidence verifier fails closed on artifact and evidence tampering", async () => {
   const env = await setup();
   const deliverablePath = path.join(
@@ -413,6 +432,37 @@ test("offline evidence verifier fails closed on artifact and evidence tampering"
   });
   const validEvidencePath = path.join(env.root, "valid-evidence.json");
   await writeFile(validEvidencePath, `${JSON.stringify(evidence)}\n`);
+
+  const serializedEvidence = JSON.stringify(evidence);
+  const duplicateKeyCases = [
+    [
+      "top-level",
+      serializedEvidence.replace(
+        '"schemaVersion":3',
+        '"schemaVersion":999,"\\u0073chemaVersion":3',
+      ),
+    ],
+    [
+      "nested",
+      serializedEvidence.replace(
+        '"schemaVersion":1',
+        '"schemaVersion":999,"\\u0073chemaVersion":1',
+      ),
+    ],
+  ];
+  for (const [name, duplicateKeyEvidence] of duplicateKeyCases) {
+    const duplicateKeyEvidencePath = path.join(
+      env.root,
+      `duplicate-${name}-key-evidence.json`,
+    );
+    await writeFile(duplicateKeyEvidencePath, `${duplicateKeyEvidence}\n`);
+    await expectCode("INVALID_EVIDENCE", () =>
+      verifyEvidence({
+        evidencePath: duplicateKeyEvidencePath,
+        deliverablePath,
+      }),
+    );
+  }
 
   const changedDeliverable = path.join(env.root, "changed.json");
   const changedBytes = Buffer.from(await readFile(deliverablePath));

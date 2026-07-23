@@ -7,6 +7,8 @@
     "test": "npm run test:superteam && npm run test:proofpay",
     "test:superteam": "node tests/run-tests.mjs",
     "test:proofpay": "node proofpay/tests/run-tests.mjs",
+    "verify:live-evidence": "node proofpay/tools/proofpay.mjs verify-evidence --evidence proofpay/demo/live-evidence/evidence.json --deliverable proofpay/deliverables/sample-milestone.txt",
+    "verify:live-evidence:online": "npm run verify:live-evidence -- --online",
     "agent": "node scripts/superteam-agent.mjs",
     "proofpay": "node proofpay/tools/proofpay.mjs"
   },

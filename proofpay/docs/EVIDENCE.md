@@ -125,6 +125,11 @@ cannot round them. Addresses, references, hashes, and signatures are never
 shortened in the machine-readable file. A human-facing display may shorten a
 value only if it also points to the full JSON.
 
+The verifier rejects duplicate object names at every nesting level, including
+names that become equal only after JSON escape decoding. This prevents
+different parsers from assigning different meanings to the same evidence
+bytes.
+
 The generated Markdown mirror also states the non-custodial and attribution
 limitations. The implementation must bump `schemaVersion` before removing a
 field, changing a field’s meaning, or weakening a verification rule.

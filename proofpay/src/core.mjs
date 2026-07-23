@@ -2200,6 +2200,113 @@ function invalidEvidence(message, details) {
   fail("INVALID_EVIDENCE", message, details);
 }
 
+function assertUniqueJsonObjectNames(raw) {
+  let offset = 0;
+
+  function skipWhitespace() {
+    while (
+      raw[offset] === " " ||
+      raw[offset] === "\t" ||
+      raw[offset] === "\n" ||
+      raw[offset] === "\r"
+    ) {
+      offset += 1;
+    }
+  }
+
+  function scanString() {
+    const start = offset;
+    offset += 1;
+    while (offset < raw.length) {
+      if (raw[offset] === "\\") {
+        offset += 2;
+      } else if (raw[offset] === "\"") {
+        offset += 1;
+        return JSON.parse(raw.slice(start, offset));
+      } else {
+        offset += 1;
+      }
+    }
+    invalidEvidence("Evidence must be valid JSON");
+  }
+
+  function scanValue(depth) {
+    if (depth > 64) {
+      invalidEvidence("Evidence JSON nesting exceeds the supported limit");
+    }
+    skipWhitespace();
+    if (raw[offset] === "{") {
+      scanObject(depth + 1);
+      return;
+    }
+    if (raw[offset] === "[") {
+      scanArray(depth + 1);
+      return;
+    }
+    if (raw[offset] === "\"") {
+      scanString();
+      return;
+    }
+    while (
+      offset < raw.length &&
+      raw[offset] !== "," &&
+      raw[offset] !== "]" &&
+      raw[offset] !== "}"
+    ) {
+      offset += 1;
+    }
+  }
+
+  function scanObject(depth) {
+    offset += 1;
+    const seen = new Set();
+    skipWhitespace();
+    if (raw[offset] === "}") {
+      offset += 1;
+      return;
+    }
+
+    while (offset < raw.length) {
+      skipWhitespace();
+      const key = scanString();
+      if (seen.has(key)) {
+        invalidEvidence("Evidence JSON object names must be unique");
+      }
+      seen.add(key);
+      skipWhitespace();
+      offset += 1;
+      scanValue(depth);
+      skipWhitespace();
+      if (raw[offset] === "}") {
+        offset += 1;
+        return;
+      }
+      offset += 1;
+    }
+  }
+
+  function scanArray(depth) {
+    offset += 1;
+    skipWhitespace();
+    if (raw[offset] === "]") {
+      offset += 1;
+      return;
+    }
+
+    while (offset < raw.length) {
+      scanValue(depth);
+      skipWhitespace();
+      if (raw[offset] === "]") {
+        offset += 1;
+        return;
+      }
+      offset += 1;
+    }
+  }
+
+  scanValue(0);
+}
+
 function assertExactEvidenceKeys(value, keys, label) {
   if (
     value === null ||
@@ -2347,11 +2454,14 @@ async function readEvidenceFile(evidencePath) {
     } catch {
       invalidEvidence("Evidence must be valid UTF-8 JSON");
     }
+    let evidence;
     try {
-      return JSON.parse(raw);
+      evidence = JSON.parse(raw);
     } catch {
       invalidEvidence("Evidence must be valid JSON");
     }
+    assertUniqueJsonObjectNames(raw);
+    return evidence;
   } finally {
     await opened.handle.close();
   }

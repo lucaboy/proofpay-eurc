@@ -452,6 +452,8 @@ function listingSubmissionCount(listing) {
     const value = Number(listing?.[key]);
     if (Number.isFinite(value)) return value;
   }
+  const nestedValue = Number(listing?._count?.Submission);
+  if (Number.isFinite(nestedValue)) return nestedValue;
   return Number.POSITIVE_INFINITY;
 }
 

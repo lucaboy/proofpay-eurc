@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": "2026-07-23T14:47:06.656Z",
+  "approval": {
+    "schemaVersion": 1,
+    "deliverableSha256": "4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8",
+    "reference": "6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y",
+    "solanaPayUri": "solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m2&memo=PROOFPAY%3Ademo-atlas-m2%3A4a3adafc3eeaa167",
+    "kind": "preview-match",
+    "recordedAt": "2026-07-23T14:46:42.543Z"
+  },
+  "invoice": {
+    "id": "demo-atlas-m2",
+    "network": "devnet",
+    "currency": "EURC",
+    "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+    "recipient": "CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8",
+    "amount": "5",
+    "amountAtomic": "5000000",
+    "validForSeconds": 604800,
+    "expiresAt": "2026-07-30T14:46:42.543Z",
+    "reference": "6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y",
+    "memo": "PROOFPAY:demo-atlas-m2:4a3adafc3eeaa167",
+    "solanaPayUri": "solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m2&memo=PROOFPAY%3Ademo-atlas-m2%3A4a3adafc3eeaa167"
+  },
+  "deliverable": {
+    "path": "sample-milestone.txt",
+    "size": 496,
+    "sha256": "4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8"
+  },
+  "payment": {
+    "signature": "5Du1jycfRHexow5gWCpFoVyKtj26N2ika6W7DzFj7PS3V3k1AsX1TFY2psJsnmCT6Aknk4T2YLkc4MJUy3qYya6R",
+    "slot": 478344904,
+    "blockTime": 1784818004,
+    "confirmedAtomic": "5000000",
+    "confirmedAmount": "5",
+    "confirmationStatus": "finalized",
+    "verifiedAt": "2026-07-23T14:47:00.604Z",
+    "rpcUrl": "https://api.devnet.solana.com"
+  },
+  "assertions": {
+    "finalized": true,
+    "transactionSucceeded": true,
+    "uniqueSuccessfulFinalizedReference": true,
+    "exactMemo": true,
+    "exactMint": true,
+    "exactRecipientDelta": true,
+    "withinPaymentWindow": true,
+    "previewMatchedAtCreation": true,
+    "nonCustodial": true
+  },
+  "limitations": [
+    "Records a finalized on-chain payment verified by ProofPay; offline verification independently checks only the schema, canonical terms, timestamps, and deliverable digest.",
+    "The preview commitment proves that create received matching digest, reference, and URI values; the external checkpoint audit is the source for who approved them.",
+    "Does not prove authorship, identity, legal acceptance, tax treatment, or refund entitlement."
+  ]
+}

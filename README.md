@@ -47,6 +47,7 @@ Start with [proofpay/README.md](./proofpay/README.md), then read the
 
 ```sh
 npm test
+npm run verify:live-evidence
 
 ./proofpay/tools/proofpay.mjs preview \
   --invoice demo-atlas-m2 \
@@ -55,6 +56,11 @@ npm test
   --network devnet \
   --deliverable sample-milestone.txt
 ```
+
+The committed public evidence fixture is the output of the recorded devnet
+payment and verifies offline against the exact sample deliverable. An optional
+`npm run verify:live-evidence:online` repeats the chain checks against the
+allowlisted Solana devnet RPC.
 
 The preview is non-persistent and cannot move funds. Its sample deliverable
 must hash to:

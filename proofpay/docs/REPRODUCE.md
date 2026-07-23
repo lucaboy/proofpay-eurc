@@ -54,6 +54,7 @@ is not a WASM wallet or signing plugin.
 
 ```sh
 npm test
+npm run verify:live-evidence
 ```
 
 Tests must cover URI construction, lowercase invoice canonicalization, exact
@@ -62,6 +63,18 @@ invoice terms, canonical associated token derivation, unique successful
 finalized reference lookup, fixed expiry, transaction verification, offline and
 online evidence verification, negative mismatches, and
 prompt-injection-shaped inputs without connecting to a wallet.
+
+The second command independently validates the committed evidence from the
+recorded live devnet payment against the exact committed sample bytes. It needs
+no wallet, credentials, runtime ledger, or network. To additionally repeat the
+payment lookup and transaction checks against Solana devnet:
+
+```sh
+npm run verify:live-evidence:online
+```
+
+The online command is read-only and requires network access. Both modes state
+that they do not authenticate the evidence producer.
 
 ## 3. Prepare an isolated ZeroClaw config
 

@@ -168,6 +168,19 @@ Run all offline tests:
 npm test
 ```
 
+Verify the committed evidence from the recorded live devnet payment against
+the exact sample deliverable:
+
+```sh
+npm run verify:live-evidence
+```
+
+The fixture contains public devnet data only. Use
+`npm run verify:live-evidence:online` to repeat the same payment checks against
+the allowlisted Solana RPC. See
+[`demo/live-evidence/README.md`](./demo/live-evidence/README.md) for its precise
+scope and limitations.
+
 Prepare an isolated config, then audit the two skills copied into its declared
 bundle:
 
