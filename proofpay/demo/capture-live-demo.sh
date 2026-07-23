@@ -21,6 +21,7 @@ ZEROCLAW_BIN=${PROOFPAY_ZEROCLAW_BIN:-"${REPO_ROOT}/.tools/zeroclaw-v0.8.3/zeroc
 WORKSPACE_DIR="${CONFIG_DIR}/agents/proofpay/workspace"
 TRACE_PATH="${CONFIG_DIR}/data/state/runtime-trace.jsonl"
 LEDGER_PATH="${WORKSPACE_DIR}/proofpay/data/invoices.json"
+PAYER_SCRIPT=${PROOFPAY_DEVNET_PAYER_SCRIPT:-}
 
 if [ ! -x "${ZEROCLAW_BIN}" ]; then
   echo "ZeroClaw 0.8.3 binary not found: ${ZEROCLAW_BIN}" >&2
@@ -34,22 +35,33 @@ if [ -e "${LEDGER_PATH}" ]; then
   echo "Recording runtime is not fresh; a request ledger already exists." >&2
   exit 2
 fi
+case "${PAYER_SCRIPT}" in
+  /private/tmp/*) ;;
+  *)
+    echo "Set PROOFPAY_DEVNET_PAYER_SCRIPT to the prepared private /private/tmp payer script." >&2
+    exit 2
+    ;;
+esac
+if [ ! -f "${PAYER_SCRIPT}" ] || [ -L "${PAYER_SCRIPT}" ]; then
+  echo "External devnet payer script is missing or unsafe: ${PAYER_SCRIPT}" >&2
+  exit 2
+fi
 
 TEST_LOG=$(mktemp /private/tmp/proofpay-tests.XXXXXX)
 trap 'rm -f "${TEST_LOG}"' EXIT HUP INT TERM
 
 printf '\033[2J\033[H'
 printf '%s\n' \
-  "PROOFPAY EURC — REAL ZEROCLAW AGENT / NO WALLET" \
-  "================================================"
+  "PROOFPAY EURC — REAL ZEROCLAW AGENT / EXTERNAL PAYER" \
+  "====================================================="
 printf 'source_commit=%s\n' "$(git -C "${REPO_ROOT}" rev-parse HEAD)"
 "${ZEROCLAW_BIN}" --version
 printf '%s\n\n' \
-  "fixed Circle EURC mint · deliverable SHA-256 · human approval · read-only verification"
+  "fixed Circle EURC mint · deliverable SHA-256 · human approval · finalized verification"
 
 printf '%s\n' "1) OFFLINE SECURITY SUITE"
 (cd "${REPO_ROOT}" && npm test >"${TEST_LOG}")
-grep -E '^(11 tests passed|21/21 tests passed)$' "${TEST_LOG}"
+grep -E '^([0-9]+ tests|[0-9]+/[0-9]+ tests) passed$' "${TEST_LOG}"
 printf '\n'
 
 printf '%s\n' "2) LOCKED ZEROCLAW SKILL SURFACE"
@@ -97,8 +109,45 @@ exit [lindex $result 3]
 EXPECT_EOF
 
 printf '\n%s\n' "5) VERIFIED TRACE + PERSISTED RESULT"
-node "${SCRIPT_DIR}/summarize-runtime-trace.mjs" "${TRACE_PATH}"
+node "${SCRIPT_DIR}/summarize-runtime-trace.mjs" \
+  "${TRACE_PATH}" \
+  "proofpay-demo__create_sample_request"
+
+printf '\n%s\n' "6) INDEPENDENT DEVNET PAYER (OUTSIDE ZEROCLAW)"
+printf '%s\n' \
+  "The payer key stays in a private temporary file and is never copied into the agent."
+node "${PAYER_SCRIPT}" transfer
+
+printf '\n%s\n' "7) ZEROCLAW RECONCILES THE FIXED REFERENCE"
+export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__check_sample_payment exactly once. Do not call any other tool. After the actual tool result, reply in one line with the invoice id, paid status, and finalized signature."
+NO_COLOR=1 "${ZEROCLAW_BIN}" \
+  --config-dir "${CONFIG_DIR}" \
+  agent --agent proofpay --log-level info \
+  --message "${PROOFPAY_VIDEO_MESSAGE}"
+node "${SCRIPT_DIR}/summarize-runtime-trace.mjs" \
+  "${TRACE_PATH}" \
+  "proofpay-demo__check_sample_payment"
+
+printf '\n%s\n' "8) ZEROCLAW WRITES IMMUTABLE EVIDENCE"
+export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__write_sample_evidence exactly once for demo-atlas-m1. Do not call any other tool. After the actual tool result, reply in one line with the evidence schema and path."
+NO_COLOR=1 "${ZEROCLAW_BIN}" \
+  --config-dir "${CONFIG_DIR}" \
+  agent --agent proofpay --log-level info \
+  --message "${PROOFPAY_VIDEO_MESSAGE}"
+node "${SCRIPT_DIR}/summarize-runtime-trace.mjs" \
+  "${TRACE_PATH}" \
+  "proofpay-demo__write_sample_evidence"
+
+printf '\n%s\n' "9) INDEPENDENT ONLINE EVIDENCE VERIFICATION"
+(
+  cd "${WORKSPACE_DIR}"
+  ./proofpay/tools/proofpay.mjs verify-evidence \
+    --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+    --deliverable proofpay/deliverables/sample-milestone.txt \
+    --online
+) | grep -E '"(ok|verification|invoiceId|paymentSignature|onChainLookupPerformed|onChainPayment)"'
+
 printf '\n%s\n' \
-  "ProofPay created one immutable local pending request." \
-  "The payer remains the only signer. No payment was attempted." \
+  "RESULT: pending → finalized paid → schema-v3 evidence, through stock ZeroClaw." \
+  "The agent never received a key and cannot sign, submit, transfer, or refund." \
   "https://github.com/lucaboy/proofpay-eurc"

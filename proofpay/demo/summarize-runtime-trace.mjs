@@ -52,13 +52,6 @@ if (!parsed || !resultRecord) {
 }
 
 const result = JSON.parse(resultRecord.attributes.output);
-if (
-  result?.id !== "demo-atlas-m1" ||
-  result?.status !== "pending" ||
-  result?.payment !== null
-) {
-  throw new Error("Tool result is not the expected pending demo request");
-}
 
 console.log("ZEROCLAW NATIVE TOOL TRACE");
 console.log(`model=${parsed.attributes.model}`);
@@ -67,8 +60,55 @@ console.log(
 );
 console.log(`tool=${expectedTool}`);
 console.log("dispatch=manifest-locked fixed wrapper");
-console.log(`result.id=${result.id} result.status=${result.status}`);
-console.log(`amount=${result.amount} ${result.currency} network=${result.network}`);
-console.log(`sha256=${result.deliverable.sha256}`);
-console.log(`reference=${result.reference}`);
-console.log("payment=null (no wallet, signature, submission, or funds moved)");
+
+if (expectedTool === "proofpay-demo__create_sample_request") {
+  if (
+    result?.id !== "demo-atlas-m1" ||
+    result?.status !== "pending" ||
+    result?.payment !== null
+  ) {
+    throw new Error("Tool result is not the expected pending demo request");
+  }
+  console.log(`result.id=${result.id} result.status=${result.status}`);
+  console.log(`amount=${result.amount} ${result.currency} network=${result.network}`);
+  console.log(`sha256=${result.deliverable.sha256}`);
+  console.log(`reference=${result.reference}`);
+  console.log(`expiresAt=${result.expiresAt}`);
+  console.log("payment=null (agent has no wallet or signing capability)");
+} else if (expectedTool === "proofpay-demo__check_sample_payment") {
+  if (
+    result?.invoiceId !== "demo-atlas-m1" ||
+    result?.status !== "paid" ||
+    typeof result?.signature !== "string" ||
+    result.signature.length < 80 ||
+    !Number.isSafeInteger(result?.slot)
+  ) {
+    throw new Error("Tool result is not the expected paid reconciliation");
+  }
+  console.log(
+    `result.invoiceId=${result.invoiceId} result.status=${result.status}`,
+  );
+  console.log(`signature=${result.signature}`);
+  console.log(`slot=${result.slot} blockTime=${result.blockTime}`);
+  console.log(`confirmationStatus=${result.confirmationStatus}`);
+} else if (expectedTool === "proofpay-demo__write_sample_evidence") {
+  if (
+    result?.invoiceId !== "demo-atlas-m1" ||
+    result?.status !== "evidence-written" ||
+    result?.schemaVersion !== 3 ||
+    typeof result?.paymentSignature !== "string" ||
+    !/^[a-f0-9]{64}$/.test(result?.deliverableSha256 ?? "")
+  ) {
+    throw new Error("Tool result is not the expected evidence bundle");
+  }
+  console.log(
+    `result.invoiceId=${result.invoiceId} result.status=${result.status}`,
+  );
+  console.log(`schemaVersion=${result.schemaVersion}`);
+  console.log(`paymentSignature=${result.paymentSignature}`);
+  console.log(`deliverableSha256=${result.deliverableSha256}`);
+  console.log(`evidence.json=${result.files.json}`);
+  console.log(`evidence.md=${result.files.markdown}`);
+} else {
+  throw new Error(`Unsupported expected tool: ${expectedTool}`);
+}

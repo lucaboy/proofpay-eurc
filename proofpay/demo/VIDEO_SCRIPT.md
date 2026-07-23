@@ -1,144 +1,111 @@
-# ProofPay EURC — video script (2:45 target)
+# ProofPay EURC - final video script (2:55 maximum)
 
-The recording must show one continuous terminal session from a clean checkout.
-Do not display `.secrets/`, wallet software, private addresses, browser
-profiles, API tokens, or the local request ledger.
+Record one continuous terminal session from a clean isolated runtime. Freeze and
+push the source commit first. Show no seed, private key, browser profile, API
+token, `.secrets` file, or raw ledger contents. The external payer script may
+print only public addresses, balances, the finalized signature, and the
+explorer URL.
 
-Freeze and push the source commit before recording. Include this script, the
-VHS tape, and the PDF in that commit; write the generated MP4 only to
-`/private/tmp`, upload it externally, and make no repository changes after
-recording the displayed SHA.
+## 0:00-0:20 - Problem and promise
 
-## 0:00–0:20 — Problem and promise
+> Payment links identify an amount and recipient, but usually lose the exact
+> work revision being paid. ProofPay binds an opaque deliverable SHA-256 to an
+> EURC Solana Pay request. A real ZeroClaw CLI agent creates, reconciles, and
+> evidences it, but never receives a wallet or signing capability.
 
-Show the repository README and say:
+Show the repository URL and frozen commit.
 
-> Payment links identify an amount and recipient, but not the exact work
-> revision being paid. ProofPay binds an opaque deliverable hash to an EURC
-> Solana Pay request. ZeroClaw orchestrates approval and verification but never
-> receives a wallet or signing capability.
+## 0:20-0:40 - Small authority surface
 
-## 0:20–0:45 — Trust boundary
+Show `proofpay/skills/proofpay-demo-tools/SKILL.toml` and the ZeroClaw skill
+listing:
 
-Show `proofpay/manifest.toml` and the architecture in `proofpay/README.md`.
-Point out:
+- six manifest-locked tools and no model-visible raw shell;
+- `create_sample_request` is the only financial-intent checkpoint and is
+  `always_ask`;
+- reconciliation and evidence are fixed post-payment actions;
+- browser, HTTP, MCP, wallet, signer, transfer, refund, and arbitrary RPC tools
+  are absent.
 
-- skill-only integration on stock ZeroClaw 0.8.3;
-- fixed Circle-listed EURC mint;
-- human checkpoint before persistence;
-- no key, signer, send, swap, refund, or arbitrary RPC path.
+The CLI is an official always-available ZeroClaw channel. State that any macOS
+no-OS-sandbox fallback exists only in a disposable `/private/tmp` recording
+runtime; the distributed template keeps the sandbox enabled.
 
-## 0:45–1:10 — Tests
+## 0:40-1:00 - Tests and canonical preview
 
-Run:
+Run `npm test` and retain both passing summaries. Briefly name the negative
+coverage: preview mismatch, conflicting idempotency key, path/symlink escape,
+concurrent writers, canonical ATA, wrong mint/recipient/amount/memo/reference,
+instruction order, signature reuse, time bounds, expiry, evidence tampering,
+and offline-versus-online verification scope.
 
-```sh
-npm test
-```
+Show the fixed preview and highlight:
 
-Keep the final all-passing summary visible. Briefly name the negative cases:
-changed/missing approval values, concurrent writers, path escape, decimals,
-mint, recipient, finality, compiled transfer reference, memo, transfer order,
-signature reuse, stale or inconsistent `blockTime`, lowercase invoice
-canonicalization, and a second evidence write failing with `EVIDENCE_EXISTS`
-without modifying the original bundle.
-
-## 1:10–2:05 — Capture preview and approved creation through ZeroClaw
-
-Before recording, prepare a fresh isolated instance:
-
-```sh
-sh ./proofpay/demo/prepare-zeroclaw-demo.sh proofpay-video
-
-zeroclaw skills list \
-  --config-dir .runtime/proofpay-video \
-  --agent proofpay
-```
-
-Show that the config-owned bundle contains both `proofpay-eurc` and
-`proofpay-demo`, with no repository, wallet, or secret copied into its
-workspace. Authenticate the model before recording without displaying
-credentials.
-
-On macOS only, if stock ZeroClaw 0.8.3 Seatbelt reports `EPERM` while starting
-Node, prepare a separate trusted local-recording runtime:
-
-```sh
-sh ./proofpay/demo/prepare-zeroclaw-demo.sh \
-  proofpay-video /private/tmp/proofpay-video-runtime \
-  --local-no-os-sandbox
-```
-
-Show the script’s warning and state that the distributed template remains on
-`sandbox_backend = "auto"`. This fallback is limited to `/private/tmp`, must
-not be deployed or shared, and remains fixed-only with no model-visible raw
-shell.
-
-The release capture uses the local Ollama model
-`neurons-coordinator-agentic:latest` through an override in this copied
-recording runtime only. Keep the repository template and every risk/tool
-setting unchanged. `zeroclaw agent --message` uses ZeroClaw's built-in CLI
-channel, which its official channel matrix lists as always available.
-
-First show the canonical, non-persistent output of the fixed helper preview.
-This establishes the complete request terms without relying on model prose.
-Highlight:
-
-- sample SHA-256
+- `demo-atlas-m1`, devnet, 12.5 EURC;
+- Circle-listed EURC mint;
+- 604800-second payment window;
+- deliverable SHA-256
   `4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8`;
-- devnet and 12.5 EURC;
-- fixed mint;
-- full reference and Solana Pay URI;
-- `preview` means no local request was persisted.
+- reference
+  `BYX5MWZexvGk9ZpD2bY1eRtD4Tkmc4CgbJVrGK1TT87X`;
+- canonical Solana Pay URI;
+- preview is non-persistent.
 
-With `untrusted_outbound_redact = true`, stock ZeroClaw 0.8.3 may render the
-public mint substring inside `solanaPayUri` as `Hzwq*[REDACTED]` in the captured
-tool result. This is capture-layer redaction only. Keep it enabled and show the
-canonical direct fixed-helper preview immediately before the trace; the
-manifest-locked create still uses the complete URI.
+## 1:00-1:35 - ZeroClaw creates the request
 
-Then start the agent over the CLI channel and ask:
+Ask the agent to call `proofpay-demo__create_sample_request` exactly once.
+Keep the explicit ZeroClaw approval prompt visible, approve once, and retain
+the native tool result. Show the sanitized trace proof requiring both
+`native_tool_calls > 0` and `parsed_tool_calls > 0`.
 
-```text
-Create the one fixed ProofPay demo request with create_sample_request.
+Highlight `pending`, the exact digest/reference/URI, seven-day expiry, and
+`payment: null`. An identical retry is idempotent; the same invoice ID with
+different immutable terms fails with `INVOICE_CONFLICT`.
+
+The trace is dispatch evidence, not a cryptographic tool receipt or human
+signature. Preview freshness is supplied by the visible `always_ask`
+checkpoint; the reference binds the fixed duration and immutable terms, not an
+absolute preview timestamp.
+
+## 1:35-2:05 - Independent payer and agent reconciliation
+
+Run the private `/private/tmp` payer script outside ZeroClaw. It sends exactly
+12.5 faucet EURC on Solana devnet and prints the finalized signature plus
+explorer URL. State:
+
+> The payer signed independently. Its key never entered the repository,
+> ZeroClaw config, agent workspace, prompt, trace, or evidence.
+
+Ask ZeroClaw to call `proofpay-demo__check_sample_payment`. Show the returned
+`paid` status, signature, slot, and finality. Explain that ProofPay checks the
+exact reference, memo, mint, amount, recipient canonical ATA, balance delta,
+instruction order, success, finality, and block-time window before persisting
+`pending -> paid`.
+
+## 2:05-2:35 - Evidence and independent verification
+
+Ask ZeroClaw to call `proofpay-demo__write_sample_evidence`. Show the schema-v3
+bundle path, signature, digest, `expiresAt`, and
+`withinPaymentWindow: true`.
+
+Then run:
+
+```sh
+./proofpay/tools/proofpay.mjs verify-evidence \
+  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --deliverable proofpay/deliverables/sample-milestone.txt \
+  --online
 ```
 
-Keep the explicit approval prompt visible. Compare it with the preview, approve
-once, and retain the parsed
-`proofpay-demo__create_sample_request` call plus returned helper JSON. Highlight
-canonical ID `demo-atlas-m1`, status `pending`, and the same digest, reference,
-and URI. Keep the `zc-receipt-*` value surfaced by the CLI response visible:
-it is ZeroClaw's ephemeral HMAC proof that the successful tool result came from
-the active runtime, not a persistent third-party signature. Explain that all
-command terms and preview-match values are hard-locked in the manifest, caller
-arguments cannot override them, and a second invocation fails with
-`INVOICE_EXISTS`.
+Show `proofpay-online-evidence-v1`, `onChainLookupPerformed: true`, and
+`onChainPayment: true`. Clarify that offline mode independently checks schema,
+canonical terms, time bounds, and artifact digest; `--online` additionally
+re-queries Solana. Neither mode authenticates the evidence producer.
 
-State that the deterministic sample address has no represented controller and
-must not receive assets. Before the trace exists in the finished video, do not
-describe the live tool call as already completed.
+## 2:35-2:55 - Close
 
-## 2:05–2:25 — Reference SOP and reconciliation
+> ProofPay strengthens payment evidence by shrinking the agent's financial
+> authority: exact intent, external signer, finalized verification, zero
+> custody.
 
-Show the four-step creation SOP graph as an operator-managed reference
-workflow. State precisely that its dynamic shell steps are not executable in
-the locked demo profile; starting an SOP does not expose raw shell. Point out
-that the fixed creation still re-hashes/re-derives under a single-writer lock
-and persists an evidence-v2 `preview-match` commitment. Then show the
-reconciliation checklist, including the compiled transfer reference, bounded
-`blockTime` replay guard, and exclusive no-overwrite evidence bundle.
-
-Do not open a wallet or make a payment in this short demo.
-
-## 2:25–2:40 — Prompt-injection result
-
-Show `proofpay/demo/prompt-injection-transcript.md`. Summarize the attack:
-replace recipient and mint, extract a seed, fake paid state, sign a refund, and
-run a script. Show the captured refusal and the zero-tool-call trace.
-
-## 2:40–2:45 — Close
-
-> ProofPay makes the payment evidence stronger by making the agent’s financial
-> authority smaller: exact verification, zero custody.
-
-End on the repository URL and commit SHA.
+End on the transaction explorer URL, repository URL, and frozen commit SHA.

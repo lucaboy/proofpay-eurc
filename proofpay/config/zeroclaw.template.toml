@@ -5,7 +5,7 @@
 # checkout: omitting that override makes stock ZeroClaw derive the dedicated
 # workspace at <config-dir>/agents/proofpay/workspace.
 #
-# This profile exposes the reviewed SOP controls and four fixed demo tools.
+# This profile exposes the reviewed SOP controls and six fixed demo tools.
 # Raw shell, Node, sh, arbitrary commands, generic file tools, HTTP, and
 # browsers remain outside the model-visible surface. The fixed tools elevate
 # only fully constant, manifest-locked helper commands. This file contains no
@@ -28,14 +28,6 @@ format = "openclaw"
 unrestricted_filesystem = false
 read_memory_from = []
 
-[agents.proofpay.tool_receipts]
-# Successful native tool results receive an ephemeral in-memory HMAC receipt.
-# Surface it on the CLI channel to make fabricated dispatch claims obvious.
-# Receipts are not durable third-party signatures and do not replace approval.
-enabled = true
-inject_system_prompt = true
-show_in_response = true
-
 [providers.models.openai.proofpay]
 model = "gpt-5.4"
 wire_api = "responses"
@@ -46,7 +38,7 @@ requires_openai_auth = true
 # allowlist entry with the executable token exactly. A basename-only entry
 # would admit an untrusted same-named executable elsewhere in the workspace.
 # Raw shell is intentionally absent from allowed_tools: only constant commands
-# locked by the four proofpay-demo wrappers can reach this executable.
+# locked by the six proofpay-demo wrappers can reach this executable.
 allowed_commands = ["./proofpay/tools/proofpay.mjs"]
 allowed_roots = []
 allowed_tools = [
@@ -59,6 +51,8 @@ allowed_tools = [
   "proofpay-demo__preview_sample",
   "proofpay-demo__create_sample_request",
   "proofpay-demo__list_local_requests",
+  "proofpay-demo__check_sample_payment",
+  "proofpay-demo__write_sample_evidence",
 ]
 excluded_tools = [
   "browser",
@@ -81,14 +75,17 @@ excluded_tools = [
   "web_search",
 ]
 always_ask = ["proofpay-demo__create_sample_request"]
-# Only the three fixed read-only/non-persistent tools are auto-approved. The
-# one persistent fixed devnet request always requires operator approval.
+# The fixed request creation always requires operator approval. Reconciliation
+# and evidence are auto-approved because they are fixed, post-payment,
+# non-custodial actions that cannot sign, submit, refund, or move funds.
 auto_approve = [
   "sop_list",
   "sop_status",
   "proofpay-demo__hash_sample",
   "proofpay-demo__preview_sample",
   "proofpay-demo__list_local_requests",
+  "proofpay-demo__check_sample_payment",
+  "proofpay-demo__write_sample_evidence",
 ]
 block_high_risk_commands = true
 forbidden_paths = [
@@ -117,14 +114,14 @@ reasoning_enabled = true
 reasoning_effort = "medium"
 
 [runtime_profiles.proofpay]
-compact_context = false
+compact_context = true
 keep_tool_context_turns = 2
 max_actions_per_hour = 30
 max_context_tokens = 32000
 max_cost_per_day_cents = 500
 max_history_messages = 40
 max_tool_iterations = 6
-max_tool_result_chars = 30000
+max_tool_result_chars = 8000
 parallel_tools = false
 shell_timeout_secs = 30
 tool_call_dedup_exempt = []
@@ -152,7 +149,7 @@ max_concurrent = 1
 # config-data default. The preparation script copies only the reviewed SOPs to
 # <config-dir>/data/sops. Their general dynamic shell steps are documentation
 # for an operator-managed deployment; this locked demo profile exposes no raw
-# shell and can execute only its four fixed proofpay-demo wrappers.
+# shell and can execute only its six fixed proofpay-demo wrappers.
 sops_dir = ""
 default_execution_mode = "supervised"
 approval_mode = "out_of_band_required"

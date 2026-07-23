@@ -1,6 +1,6 @@
 [sop]
 name = "proofpay-reconcile"
-description = "Read-only bounded reconciliation of pending ProofPay EURC requests against finalized Solana transaction data."
+description = "Non-custodial bounded reconciliation of pending ProofPay EURC requests against finalized Solana transaction data."
 version = "0.1.0"
 priority = "low"
 execution_mode = "auto"

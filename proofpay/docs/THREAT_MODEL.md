@@ -19,6 +19,7 @@ command, or custody database in this project.
 |---|---|
 | Operator recipient address | Integrity; only the operator can select it |
 | Amount, network, mint | Integrity; immutable after explicit approval |
+| Validity duration and absolute expiry | Fixed duration bound into the reference; expiry derived from recorded creation |
 | Deliverable bytes and SHA-256 | Integrity and correct binding |
 | Unique Solana Pay reference | Uniqueness and request correlation |
 | Preview-match commitment | Integrity of digest/reference/URI accepted by `create`; no identity claim |
@@ -82,13 +83,16 @@ Its CLI paths are fixed relative to the reviewed `proofpay/` package:
 `deliverables/`, `data/invoices.json`, and `evidence/`. Environment variables
 and CLI flags cannot redirect those paths in normal operation.
 
-The four fixed demo wrappers delegate internally to ZeroClaw’s native `shell`
+The six fixed demo wrappers delegate internally to ZeroClaw’s native `shell`
 target, but their complete commands are manifest-locked; the raw `shell` tool
 is absent from the model-visible locked demo profile. An operator-managed
 deployment may choose a separately reviewed dynamic shell surface. In either
 case the helper enforces its own HTTPS RPC allowlist, response-size limits,
 timeouts, JSON validation, and workspace path containment. The ZeroClaw risk
 profile adds command and filesystem constraints as defense in depth.
+Three wrappers are non-mutating views. Creation requires `always_ask`;
+reconciliation may persist only a verified paid checkpoint; evidence may create
+only one exclusive bundle. These are local state changes, not fund movements.
 
 ### Deliverable
 
@@ -125,11 +129,14 @@ issuer, freeze, depeg, sanctions, regulatory, or smart-contract risk.
 | Deliverable embeds tool instructions | File is hashed as opaque bytes; no execution or prompt interpolation | OS/file-system parser bugs remain possible |
 | Prompt asks agent to sign/refund | No key, wallet adapter, signing, transfer, or refund capability exists | A separately installed broad shell/tool could violate the deployment model |
 | Address or URI swapped after approval | `create` requires the preview’s full digest, reference, and URI; it re-hashes and re-derives all terms before writing | Compromised display or OS may deceive operator |
-| Technical commitment misrepresented as human identity | Evidence v2 labels it `preview-match` and states that checkpoint/identity attribution remains in the external audit trail | A recipient can still quote evidence out of context |
+| Technical commitment misrepresented as human identity | Evidence v3 labels it `preview-match` and states that checkpoint/identity attribution remains in the external audit trail | A recipient can still quote evidence out of context |
 | Fake token uses EURC name | Fixed mint comparison, not symbol comparison | Pinned mint must be updated if issuer migrates |
 | Partial/failed transaction treated as paid | Require finalized commitment, `meta.err = null`, exact token delta, recipient, amount, reference, and mint | RPC may lie; multi-provider verification is optional |
-| Unrelated transfer borrows invoice memo/reference | Require the exact memo as penultimate outer instruction and a compiled SPL transfer as the final instruction; require the reference as the transfer’s additional readonly non-signer account; verify destination account and delta | Non-standard wallet transaction layouts may be rejected fail-closed |
-| Old transaction replayed | Domain-separated reference, local signature uniqueness, non-null `blockTime` consistent across RPC views, and a bounded request/verification time window | Local ledger loss or a malicious time source can reduce replay detection |
+| Unrelated transfer borrows invoice memo/reference | Require exactly one successful finalized reference match, the exact memo as penultimate outer instruction, and a compiled SPL transfer as the final instruction; require the reference as the transfer’s additional readonly non-signer account; verify destination account and delta | Non-standard wallet transaction layouts may be rejected fail-closed |
+| Alternate recipient-owned token account is substituted | Derive the canonical associated token account from recipient plus pinned mint and require the final transfer destination to equal it | A wallet that builds a non-canonical layout is rejected fail-closed |
+| Old or late transaction replayed | Domain-separated reference binds the fixed duration; absolute `expiresAt`, local signature uniqueness, non-null `blockTime` consistency, and bounded skew are enforced | Solana Pay cannot prevent a payer broadcasting after expiry; ProofPay rejects it but cannot reverse it |
+| Stale preview is presented as fresh approval | Reference binds duration rather than absolute issue time; the ZeroClaw `always_ask` checkpoint occurs at the actual create invocation, which records `expiresAt` | A compromised display/operator can still approve stale or malicious terms |
+| Duplicate create is retried after an uncertain response | An exact retry is idempotent and preserves the original record; different terms for the same ID fail with `INVOICE_CONFLICT` | A local administrator can still tamper with storage |
 | Amount rounding | Decimal parsed to exact atomic units; no floating-point comparison | Incorrect token-decimal metadata must fail closed |
 | Concurrent writers lose or overwrite state | Per-ledger exclusive lock serializes create/check mutations; writes are atomic; IDs and approved terms are immutable | A local administrator or unsupported distributed filesystem can bypass assumptions |
 | Evidence regenerated over an earlier result | Per-invoice evidence lock, exclusive files, and atomic directory commit reject an existing bundle | A local administrator can delete or edit artifacts |
@@ -147,7 +154,7 @@ issuer, freeze, depeg, sanctions, regulatory, or smart-contract risk.
 
 - Inputs are normalized and validated before display.
 - The full address, exact amount, network, fixed mint, deliverable path, and
-  digest are shown before approval.
+  digest, and fixed 604800-second validity are shown before approval.
 - Approval is out of band. Its machine-enforced form contains the exact
   preview digest, reference, and Solana Pay URI.
 - `create` re-hashes and re-derives the complete request, then compares all
@@ -156,8 +163,13 @@ issuer, freeze, depeg, sanctions, regulatory, or smart-contract risk.
   `kind = preview-match`, and the local creation timestamp. It does not record
   or authenticate a person’s identity.
 - The request reference is the base58 encoding of a domain-separated SHA-256
-  over network, recipient, atomic amount, invoice, and full deliverable digest.
-  Preview and create reproduce the same value; an existing invoice is rejected.
+  over network, recipient, atomic amount, invoice, full deliverable digest, and
+  fixed validity duration. Preview and create reproduce the same value.
+  `create` records the absolute `expiresAt`; an identical retry is idempotent,
+  while conflicting terms for the same ID fail with `INVOICE_CONFLICT`.
+- Because the URI has no native expiry and the reference does not bind absolute
+  preview time, freshness relies on the ZeroClaw `always_ask` checkpoint at the
+  actual create invocation.
 - A filesystem lock serializes ledger writers; immutable identity fields are
   rechecked before a reconciled payment transition is committed.
 - Public text is deterministic and non-sensitive.
@@ -176,6 +188,11 @@ issuer, freeze, depeg, sanctions, regulatory, or smart-contract risk.
 - A valid payment carries that reference exactly once as a readonly non-signer
   transaction key and as the additional account on the compiled final SPL
   transfer instruction.
+- Exactly one successful finalized signature-history entry may match the
+  reference, and the destination must be the canonical associated token account
+  derived from recipient plus mint.
+- Its positive `blockTime` must be within the recorded payment window plus
+  bounded skew and agree across both RPC views.
 - All expected values come from the immutable local record.
 - A missing or ambiguous field cannot be interpreted as success.
 - A transaction mismatch never mutates the request to match reality.
@@ -183,9 +200,15 @@ issuer, freeze, depeg, sanctions, regulatory, or smart-contract risk.
 ### Evidence
 
 - Evidence is a derived, reproducible view of request and transaction data.
-- Evidence schema v2 includes the validated stored preview-match commitment and
-  asserts `previewMatchedAtCreation`; the external operator/SOP audit trail is
-  still required for checkpoint and identity attribution.
+- Evidence schema v3 includes the validated stored preview-match commitment,
+  `validForSeconds`, `expiresAt`, and asserts
+  `uniqueSuccessfulFinalizedReference`, `withinPaymentWindow`, and
+  `previewMatchedAtCreation`; the external operator/SOP audit trail is still
+  required for checkpoint and identity attribution.
+- Offline evidence verification checks artifact integrity, canonical terms,
+  timestamps, and supplied deliverable bytes without querying Solana. Online
+  verification additionally repeats the payment checks, but neither mode
+  authenticates the evidence producer.
 - Evidence is committed as one exclusive per-invoice directory under its own
   writer lock. An existing bundle is not overwritten.
 - The full deliverable is not copied into evidence.
@@ -225,7 +248,7 @@ ProofPay does not:
 - Keep `approval_mode = "out_of_band_required"` and never auto-approve the
   persistent `create_sample_request` wrapper.
 - Keep raw `shell` outside `allowed_tools`. The locked demo may elevate only
-  the four fixed manifest commands; do not expose generic `node`, command
+  the six fixed manifest commands; do not expose generic `node`, command
   arguments supplied by the model, or an arbitrary shell surface.
 - Do not add wallet, generic browser, arbitrary HTTP, or broad filesystem tools.
 - Keep the distributed sandbox on `auto`. The macOS

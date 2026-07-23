@@ -130,10 +130,10 @@ def draw():
     paragraph(canvas, "The job", margin + 6 * mm, top - 6 * mm, col_w - 12 * mm, h1)
     paragraph(
         canvas,
-        "<b>A ZeroClaw CLI agent creates a real pending EURC payment request</b> "
-        "for an exact milestone file. It hashes the deliverable, derives a "
-        "domain-separated reference, generates a Solana Pay URI, validates the "
-        "human-approved preview values, and persists the immutable request.",
+        "<b>A ZeroClaw CLI agent runs a real EURC request from intent to evidence</b> "
+        "for an exact milestone file. It hashes the deliverable, creates an "
+        "operator-approved Solana Pay request, reconciles the external payer's "
+        "finalized devnet transfer, and writes schema-v3 evidence.",
         margin + 6 * mm,
         top - 15 * mm,
         col_w - 12 * mm,
@@ -184,7 +184,7 @@ def draw():
     steps = [
         ("1", "Hash + preview", "Canonical SHA-256, exact EURC amount, fixed mint, reference and URI."),
         ("2", "Approval gate", "Three preview values must match exactly; any edit fails closed."),
-        ("3", "Persist + verify", "Pending request now; read-only Solana reconciliation later."),
+        ("3", "Pay + evidence", "External signer; agent verifies finalized Solana data and writes evidence."),
     ]
     for index, (number, title, copy) in enumerate(steps):
         x = margin + index * (flow_w + flow_gap)
@@ -205,10 +205,10 @@ def draw():
     canvas.drawString(margin, metrics_top, "Verified posture")
 
     metrics = [
-        ("32", "automated tests"),
+        ("36", "automated tests"),
         ("0", "wallet secrets"),
         ("CLI", "real ZeroClaw channel"),
-        ("v2", "evidence schema"),
+        ("v3", "evidence schema"),
     ]
     metric_y = metrics_top - 26 * mm
     metric_gap = 3 * mm
@@ -228,13 +228,13 @@ def draw():
     paragraph(canvas, "Security boundary", margin + 6 * mm, safety_top - 6 * mm, 53 * mm, h1)
     paragraph(
         canvas,
-        "<b>No model-visible raw shell.</b> The locked demo exposes only reviewed "
-        "fixed tools with constant commands, an isolated workspace, cleared "
+        "<b>No model-visible raw shell.</b> Six locked tools expose only reviewed "
+        "constant commands, an isolated workspace, cleared "
         "environment, single concurrency, and no browser/HTTP/MCP. The template "
         "keeps ZeroClaw's OS sandbox enabled; the documented macOS 0.8.3 local "
         "recording fallback remains fixed-only. The dynamic SOP is "
         "operator-supervised reference material, not part of the locked surface. "
-        "Ephemeral HMAC receipts make fabricated tool-dispatch claims visible.",
+        "A sanitized trace must show both a parsed native call and returned JSON.",
         margin + 6 * mm,
         safety_top - 15 * mm,
         80 * mm,
@@ -244,9 +244,9 @@ def draw():
         canvas,
         "<b>Fail-closed checks:</b> path containment, no symlinks, exact amount "
         "decimals, single-writer ledger lock, immutable invoice terms, exact "
-        "mint/recipient/reference/memo/order/finality, signature reuse rejection, "
-        "matching positive block times within the replay window, and no-overwrite "
-        "evidence bundles.",
+        "mint/recipient/canonical ATA/reference/memo/order/finality, expiry and "
+        "signature-reuse rejection, online evidence re-verification, and "
+        "no-overwrite evidence bundles.",
         margin + 98 * mm,
         safety_top - 15 * mm,
         width - margin - (margin + 104 * mm),

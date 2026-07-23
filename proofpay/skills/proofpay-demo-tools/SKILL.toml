@@ -5,7 +5,7 @@ version = "0.1.0"
 author = "lucaboy"
 tags = ["solana", "eurc", "demo", "bounded", "non-custodial"]
 prompts = [
-  "Use these fixed tools only for the reproducible devnet sample. Never invent, calculate, shorten, or replace their outputs. The sample recipient is a deterministic public test key with no represented controller or private key. Only create_sample_request persists state, only after operator approval, and its complete command and preview-match values are locked in this manifest. No tool can sign, submit, send, refund, or move funds."
+  "Use these six fixed tools only for the reproducible devnet sample. Never invent, calculate, shorten, or replace their outputs. The sample recipient is a deterministic public test key with no represented controller or private key. create_sample_request persists the approved request; check_sample_payment can only reconcile the fixed reference through read-only RPC and persist a paid result; write_sample_evidence can only write the fixed paid evidence bundle. The complete create command and all preview-match values are locked in this manifest. No tool can sign, submit, send, refund, or move funds."
 ]
 
 [[tools]]
@@ -31,7 +31,7 @@ description = "Persist the one fixed canonical demo-atlas-m1 devnet request afte
 kind = "builtin"
 target = "shell"
 command = ""
-locked_args = { command = "./proofpay/tools/proofpay.mjs create --invoice 'demo-atlas-m1' --recipient 'CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8' --amount '12.50' --network 'devnet' --deliverable 'sample-milestone.txt' --approve-digest '4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8' --approve-reference '3MzQWeqjrBA4ujyDGXB9emg8hVJRTHd3Yyvi4pMjZpsn' --approve-uri 'solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=12.5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=3MzQWeqjrBA4ujyDGXB9emg8hVJRTHd3Yyvi4pMjZpsn&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m1&memo=PROOFPAY%3Ademo-atlas-m1%3A4a3adafc3eeaa167'" }
+locked_args = { command = "./proofpay/tools/proofpay.mjs create --invoice 'demo-atlas-m1' --recipient 'CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8' --amount '12.50' --network 'devnet' --deliverable 'sample-milestone.txt' --approve-digest '4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8' --approve-reference 'BYX5MWZexvGk9ZpD2bY1eRtD4Tkmc4CgbJVrGK1TT87X' --approve-uri 'solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=12.5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=BYX5MWZexvGk9ZpD2bY1eRtD4Tkmc4CgbJVrGK1TT87X&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m1&memo=PROOFPAY%3Ademo-atlas-m1%3A4a3adafc3eeaa167'" }
 
 [[tools]]
 name = "list_local_requests"
@@ -39,4 +39,20 @@ description = "Read the bounded local ProofPay request ledger as JSON without qu
 kind = "builtin"
 target = "shell"
 command = ""
-locked_args = { command = "./proofpay/tools/proofpay.mjs list --json" }
+locked_args = { command = "./proofpay/tools/proofpay.mjs list --compact --json" }
+
+[[tools]]
+name = "check_sample_payment"
+description = "Reconcile only demo-atlas-m1 against the allowlisted devnet RPC; it cannot sign or move funds and can persist only the verified paid checkpoint."
+kind = "builtin"
+target = "shell"
+command = ""
+locked_args = { command = "./proofpay/tools/proofpay.mjs check --invoice demo-atlas-m1 --compact --json" }
+
+[[tools]]
+name = "write_sample_evidence"
+description = "Write the immutable evidence bundle only for the already verified demo-atlas-m1 payment; it cannot query wallets, sign, or move funds."
+kind = "builtin"
+target = "shell"
+command = ""
+locked_args = { command = "./proofpay/tools/proofpay.mjs evidence --invoice demo-atlas-m1 --compact --json" }

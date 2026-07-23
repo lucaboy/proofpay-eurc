@@ -13,24 +13,31 @@ This repository is a submission for the
 ## What is included
 
 - a stock ZeroClaw 0.8.3 instruction skill and supervised SOPs;
-- four fixed demo tools prepared for a reproducible ZeroClaw tool-dispatch
-  recording: three read-only/non-persistent tools plus one operator-approved,
-  persistent devnet sample request;
-- ephemeral HMAC tool receipts surfaced by the CLI channel so a narrated call
-  without a successful runtime dispatch is visibly receipt-less;
+- six fixed demo tools prepared for a reproducible ZeroClaw tool-dispatch
+  recording: three non-mutating views, one operator-approved idempotent request
+  writer, one fixed reconciler, and one exclusive evidence writer;
+- a sanitized ZeroClaw runtime trace that independently requires both a parsed
+  native tool call and its returned helper JSON before a dispatch claim passes;
 - a dependency-free Node.js 16 helper for preview-bound creation, single-writer
-  request storage, read-only reconciliation, and exclusive no-overwrite
+  request storage, read-only-chain reconciliation with a verified local paid
+  checkpoint, and exclusive no-overwrite
   evidence bundles;
-- evidence schema v2 with a persisted technical preview-match commitment,
-  explicitly separated from human identity/checkpoint attribution;
+- evidence schema v3 with a persisted technical preview-match commitment, fixed
+  seven-day payment window, absolute expiry, and an explicit
+  `withinPaymentWindow` assertion, separated from human identity/checkpoint
+  attribution;
 - exact EURC arithmetic and a pinned Circle-listed Solana mint;
-- fail-closed verification of finality, execution, reference, memo,
-  instruction order, mint, recipient owner, destination account, amount, and
-  matching positive RPC block times inside a bounded replay window;
+- fail-closed verification of finality, execution, the unique successful
+  finalized reference match, memo, instruction order, mint, recipient owner,
+  canonical associated token destination, amount, and matching positive RPC
+  block times inside the fixed payment window;
+- offline evidence verification for schema, canonical terms, timestamps, and
+  deliverable bytes, plus opt-in online re-verification against Solana;
 - an offline suite covering the ProofPay core and the Superteam Agent API
   client;
 - a threat model, clean-room reproduction guide, prompt-injection transcript,
-  standards crosswalk, short video script, and submission copy.
+  standards crosswalk, deterministic supply-chain bundle, short video script,
+  and submission copy.
 
 Start with [proofpay/README.md](./proofpay/README.md), then read the
 [threat model](./proofpay/docs/THREAT_MODEL.md).
@@ -65,6 +72,9 @@ tool call is proven over ZeroClaw's built-in CLI channel by the final submission
 video and its visible ZeroClaw trace; repository code alone is not evidence of
 model dispatch. ZeroClaw's official channel matrix lists `cli` as an
 always-available channel with no external dependency.
+The final devnet capture follows one real request from approved `pending`
+creation through independently signed payment, ZeroClaw reconciliation to
+`paid`, and exclusive evidence generation. The payer remains outside the agent.
 The locked demo profile exposes no raw shell. On macOS, the preparation guide
 documents a clearly marked `/private/tmp` local-recording fallback for a stock
 ZeroClaw 0.8.3 Seatbelt/Node incompatibility; the distributed template keeps
@@ -72,6 +82,12 @@ the OS sandbox enabled in `auto` mode.
 
 The implementation-to-specification mapping is documented in
 [`proofpay/docs/STANDARDS.md`](./proofpay/docs/STANDARDS.md).
+The paper, protocol, open-source, and community findings that shaped the final
+controls are mapped in
+[`proofpay/docs/RESEARCH.md`](./proofpay/docs/RESEARCH.md).
+The deterministic tested-source bundle and GitHub attestation boundary are
+documented in
+[`proofpay/docs/SUPPLY_CHAIN.md`](./proofpay/docs/SUPPLY_CHAIN.md).
 
 ## Superteam Agent API monitor
 

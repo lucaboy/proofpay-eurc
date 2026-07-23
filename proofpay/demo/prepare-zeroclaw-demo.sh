@@ -169,7 +169,7 @@ if [ -e "${CONFIG_DIR}/.secrets" ] || [ -e "${WORKSPACE}/.git" ]; then
   exit 2
 fi
 
-# Exercise the exact commands delegated by the three non-persistent fixed tools
+# Exercise the exact commands delegated by the three non-mutating fixed tools
 # from the same working directory ZeroClaw derives for the proofpay agent.
 # These operations are read-only and non-persistent; no request or payment is
 # made.
@@ -183,7 +183,7 @@ fi
     --amount 12.50 \
     --network devnet \
     --deliverable sample-milestone.txt >/dev/null
-  ./proofpay/tools/proofpay.mjs list --json >/dev/null
+  ./proofpay/tools/proofpay.mjs list --compact --json >/dev/null
 )
 
 ZEROCLAW_BIN=${PROOFPAY_ZEROCLAW_BIN:-}
@@ -214,7 +214,7 @@ if [ -n "${ZEROCLAW_BIN}" ]; then
 
   ALLOWED_TOOLS=$("${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" \
     config get risk_profiles.proofpay.allowed_tools)
-  EXPECTED_TOOLS='["sop_list", "sop_execute", "sop_advance", "sop_approve", "sop_status", "proofpay-demo__hash_sample", "proofpay-demo__preview_sample", "proofpay-demo__create_sample_request", "proofpay-demo__list_local_requests"]'
+  EXPECTED_TOOLS='["sop_list", "sop_execute", "sop_advance", "sop_approve", "sop_status", "proofpay-demo__hash_sample", "proofpay-demo__preview_sample", "proofpay-demo__create_sample_request", "proofpay-demo__list_local_requests", "proofpay-demo__check_sample_payment", "proofpay-demo__write_sample_evidence"]'
   if [ "${ALLOWED_TOOLS}" != "${EXPECTED_TOOLS}" ]; then
     echo "Unexpected model-visible tool allowlist: ${ALLOWED_TOOLS}" >&2
     exit 2
@@ -263,7 +263,7 @@ if [ -n "${ZEROCLAW_BIN}" ]; then
     skills list --agent proofpay)
   for EXPECTED_SKILL_ITEM in \
     "proofpay-demo v0.1.0" \
-    "hash_sample, preview_sample, create_sample_request, list_local_requests" \
+    "hash_sample, preview_sample, create_sample_request, list_local_requests, check_sample_payment, write_sample_evidence" \
     "proofpay-eurc v0.1.0"
   do
     if ! printf '%s\n' "${SKILLS_OUTPUT}" | grep -Fq "${EXPECTED_SKILL_ITEM}"; then

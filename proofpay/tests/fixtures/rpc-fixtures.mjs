@@ -1,9 +1,11 @@
-import { base58Encode } from "../../src/core.mjs";
+import { EURC_MINT, base58Encode } from "../../src/core.mjs";
 
 export const RECIPIENT = base58Encode(Buffer.alloc(32, 3));
 export const OTHER_RECIPIENT = base58Encode(Buffer.alloc(32, 4));
 export const WRONG_MINT = base58Encode(Buffer.alloc(32, 5));
-export const TOKEN_ACCOUNT = base58Encode(Buffer.alloc(32, 6));
+// Independent vector generated with @solana/spl-token 0.4.8.
+export const TOKEN_ACCOUNT =
+  "7pXsBCMbAPP3G325j7x3qiqYeXZBq7b7WENFDztHeGUv";
 export const SIGNATURE = base58Encode(Buffer.alloc(64, 9));
 export const OTHER_SIGNATURE = base58Encode(Buffer.alloc(64, 10));
 
@@ -44,6 +46,7 @@ export function rpcFixture(
     signatureBlockTime = blockTime,
     omitSignatureBlockTime = false,
     previousInstructionData = null,
+    destinationTokenAccount = TOKEN_ACCOUNT,
   } = {},
 ) {
   const postAmount = (BigInt(preAmount) + BigInt(delta)).toString();
@@ -70,7 +73,7 @@ export function rpcFixture(
       }
       const accountKeys = [
         AUTHORITY,
-        TOKEN_ACCOUNT,
+        destinationTokenAccount,
         SOURCE_TOKEN_ACCOUNT,
         reference,
         mint,

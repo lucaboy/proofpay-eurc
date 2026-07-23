@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import {
   mkdtemp,
   mkdir,
@@ -10,19 +11,24 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import {
   EURC_MINT,
+  PAYMENT_WINDOW_SECONDS,
   ProofPayError,
   base58Decode,
   base58Encode,
   checkInvoice,
   createInvoice,
+  deriveAssociatedTokenAddress,
   generateEvidence,
   hashDeliverable,
   listInvoices,
   parseAmount,
   previewInvoice,
   verifyPayment,
+  verifyEvidence,
   writeEvidence,
 } from "../src/core.mjs";
 import {
@@ -30,11 +36,16 @@ import {
   OTHER_SIGNATURE,
   RECIPIENT,
   SIGNATURE,
+  TOKEN_ACCOUNT,
   WRONG_MINT,
   rpcFixture,
 } from "./fixtures/rpc-fixtures.mjs";
 
 const tests = [];
+const execFileAsync = promisify(execFile);
+const proofPayCli = fileURLToPath(
+  new URL("../tools/proofpay.mjs", import.meta.url),
+);
 
 function test(name, fn) {
   tests.push({ name, fn });
@@ -98,6 +109,30 @@ test("base58 round-trips exact 32- and 64-byte values", () => {
   assert.deepEqual(base58Decode(base58Encode(Buffer.alloc(32))), Buffer.alloc(32));
 });
 
+test("canonical associated token addresses match the Solana derivation", () => {
+  const officialVectors = [
+    [RECIPIENT, TOKEN_ACCOUNT],
+    [
+      "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "6rWbK2k5m1VWbFmWUaM4aYTq2cBaCU7PhrYSNYn3Kx6n",
+    ],
+    [
+      "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "5WnsZugYkpeeDt9hQNAWHCe3xSpCSQvb7jkGR3GG1WTA",
+    ],
+    [
+      "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB",
+      "73Y6Wxci3A49Uib5tf4UodDXVsm9SWoCMQTLQVjdFhik",
+    ],
+  ];
+  for (const [owner, associatedTokenAccount] of officialVectors) {
+    assert.equal(
+      deriveAssociatedTokenAddress(owner, EURC_MINT),
+      associatedTokenAccount,
+    );
+  }
+});
+
 test("amount parser is strict, canonical, positive, and limited to 6 decimals", async () => {
   assert.deepEqual(parseAmount("42.500000"), {
     amount: "42.5",
@@ -138,6 +173,12 @@ test("preview and create produce the same canonical reference and URI", async ()
   assert.equal(base58Decode(preview.reference).length, 32);
   assert.equal(preview.reference, created.reference);
   assert.equal(preview.solanaPayUri, created.solanaPayUri);
+  assert.equal(preview.validForSeconds, PAYMENT_WINDOW_SECONDS);
+  assert.equal(created.idempotent, false);
+  assert.equal(
+    Date.parse(created.expiresAt) - Date.parse(created.createdAt),
+    PAYMENT_WINDOW_SECONDS * 1000,
+  );
   assert.deepEqual(created.approval, {
     ...preview.approval,
     kind: "preview-match",
@@ -155,8 +196,11 @@ test("preview and create produce the same canonical reference and URI", async ()
   );
   const mode = (await stat(env.storagePath)).mode & 0o777;
   assert.equal(mode, 0o600);
-  await expectCode("INVOICE_EXISTS", () =>
-    createApproved(input(), { ...env }),
+  const retry = await createApproved(input(), { ...env });
+  assert.equal(retry.idempotent, true);
+  assert.equal(retry.createdAt, created.createdAt);
+  await expectCode("INVOICE_CONFLICT", () =>
+    createApproved(input({ amount: "43" }), { ...env }),
   );
 });
 
@@ -253,10 +297,13 @@ test("happy path verifies finalized exact EURC delta and writes evidence mode 60
     storagePath: env.storagePath,
     clock: () => new Date("2026-07-23T10:06:00.000Z"),
   });
-  assert.equal(evidence.schemaVersion, 2);
+  assert.equal(evidence.schemaVersion, 3);
   assert.deepEqual(evidence.approval, invoice.approval);
   assert.equal(evidence.assertions.previewMatchedAtCreation, true);
   assert.equal(evidence.assertions.nonCustodial, true);
+  assert.equal(evidence.assertions.withinPaymentWindow, true);
+  assert.equal(evidence.invoice.validForSeconds, PAYMENT_WINDOW_SECONDS);
+  assert.equal(evidence.invoice.expiresAt, invoice.expiresAt);
   assert.equal(evidence.payment.signature, SIGNATURE);
 
   const written = await writeEvidence(invoice.id, {
@@ -279,6 +326,191 @@ test("happy path verifies finalized exact EURC delta and writes evidence mode 60
   );
   assert.equal(await readFile(written.files.json, "utf8"), originalJson);
   assert.equal(await readFile(written.files.markdown, "utf8"), originalMarkdown);
+});
+
+test("offline evidence verifier recomputes the artifact digest and canonical terms", async () => {
+  const env = await setup();
+  const invoice = await createApproved(input(), {
+    ...env,
+    clock: () => new Date("2026-07-23T10:00:00.000Z"),
+  });
+  const mock = rpcFixture(invoice);
+  await checkInvoice(invoice.id, {
+    storagePath: env.storagePath,
+    rpcCall: mock.rpcCall,
+    clock: () => new Date("2026-07-23T10:05:00.000Z"),
+  });
+  const written = await writeEvidence(invoice.id, {
+    storagePath: env.storagePath,
+    evidenceDir: env.evidenceDir,
+    clock: () => new Date("2026-07-23T10:06:00.000Z"),
+  });
+
+  const verified = await verifyEvidence({
+    evidencePath: written.files.json,
+    deliverablePath: path.join(
+      env.deliverablesDir,
+      "release-manifest.json",
+    ),
+  });
+  assert.equal(verified.ok, true);
+  assert.equal(verified.invoiceId, invoice.id);
+  assert.equal(verified.deliverable.sha256, invoice.deliverable.sha256);
+  assert.equal(verified.checks.canonicalInvoiceTerms, true);
+  assert.equal(verified.scope.onChainLookupPerformed, false);
+
+  const { stdout, stderr } = await execFileAsync(process.execPath, [
+    proofPayCli,
+    "verify-evidence",
+    "--evidence",
+    written.files.json,
+    "--deliverable",
+    path.join(env.deliverablesDir, "release-manifest.json"),
+  ]);
+  assert.equal(stderr, "");
+  const cliVerified = JSON.parse(stdout);
+  assert.equal(cliVerified.verification, "proofpay-offline-evidence-v1");
+  assert.equal(cliVerified.invoiceId, invoice.id);
+
+  const onlineRpc = rpcFixture(invoice);
+  const online = await verifyEvidence({
+    evidencePath: written.files.json,
+    deliverablePath: path.join(
+      env.deliverablesDir,
+      "release-manifest.json",
+    ),
+    online: true,
+    rpcCall: onlineRpc.rpcCall,
+    clock: () => new Date("2026-07-23T10:06:00.000Z"),
+  });
+  assert.equal(online.verification, "proofpay-online-evidence-v1");
+  assert.equal(online.scope.onChainLookupPerformed, true);
+  assert.equal(online.checks.onChainPayment, true);
+  assert.deepEqual(
+    onlineRpc.calls.map(({ method }) => method),
+    ["getSignaturesForAddress", "getTransaction"],
+  );
+});
+
+test("offline evidence verifier fails closed on artifact and evidence tampering", async () => {
+  const env = await setup();
+  const deliverablePath = path.join(
+    env.deliverablesDir,
+    "release-manifest.json",
+  );
+  const invoice = await createApproved(input(), {
+    ...env,
+    clock: () => new Date("2026-07-23T10:00:00.000Z"),
+  });
+  await checkInvoice(invoice.id, {
+    storagePath: env.storagePath,
+    rpcCall: rpcFixture(invoice).rpcCall,
+    clock: () => new Date("2026-07-23T10:05:00.000Z"),
+  });
+  const evidence = await generateEvidence(invoice.id, {
+    storagePath: env.storagePath,
+    clock: () => new Date("2026-07-23T10:06:00.000Z"),
+  });
+  const validEvidencePath = path.join(env.root, "valid-evidence.json");
+  await writeFile(validEvidencePath, `${JSON.stringify(evidence)}\n`);
+
+  const changedDeliverable = path.join(env.root, "changed.json");
+  const changedBytes = Buffer.from(await readFile(deliverablePath));
+  changedBytes[0] ^= 1;
+  await writeFile(changedDeliverable, changedBytes);
+  await expectCode("DELIVERABLE_DIGEST_MISMATCH", () =>
+    verifyEvidence({
+      evidencePath: validEvidencePath,
+      deliverablePath: changedDeliverable,
+    }),
+  );
+
+  const cases = [
+    ["digest", (value) => {
+      value.deliverable.sha256 = "0".repeat(64);
+    }, "DELIVERABLE_DIGEST_MISMATCH"],
+    ["amount", (value) => {
+      value.invoice.amountAtomic = "1";
+    }, "INVALID_EVIDENCE"],
+    ["uri", (value) => {
+      value.invoice.solanaPayUri += "&memo=forged";
+    }, "INVALID_EVIDENCE"],
+    ["assertion", (value) => {
+      value.assertions.exactMemo = false;
+    }, "INVALID_EVIDENCE"],
+    ["limitations", (value) => {
+      value.limitations = [];
+    }, "INVALID_EVIDENCE"],
+  ];
+  for (const [name, mutate, expectedCode] of cases) {
+    const tampered = JSON.parse(JSON.stringify(evidence));
+    mutate(tampered);
+    const evidencePath = path.join(env.root, `${name}.json`);
+    await writeFile(evidencePath, `${JSON.stringify(tampered)}\n`);
+    await expectCode(expectedCode, () =>
+      verifyEvidence({ evidencePath, deliverablePath }),
+    );
+  }
+
+  const forgedSignatureEvidence = JSON.parse(JSON.stringify(evidence));
+  forgedSignatureEvidence.payment.signature = OTHER_SIGNATURE;
+  const forgedSignaturePath = path.join(
+    env.root,
+    "forged-signature-evidence.json",
+  );
+  await writeFile(
+    forgedSignaturePath,
+    `${JSON.stringify(forgedSignatureEvidence)}\n`,
+  );
+  assert.equal(
+    (
+      await verifyEvidence({
+        evidencePath: forgedSignaturePath,
+        deliverablePath,
+      })
+    ).scope.onChainLookupPerformed,
+    false,
+  );
+  await expectCode("EVIDENCE_CHAIN_MISMATCH", () =>
+    verifyEvidence({
+      evidencePath: forgedSignaturePath,
+      deliverablePath,
+      online: true,
+      rpcCall: rpcFixture(invoice).rpcCall,
+      clock: () => new Date("2026-07-23T10:06:00.000Z"),
+    }),
+  );
+
+  const impossibleTimestamp = JSON.parse(JSON.stringify(evidence));
+  impossibleTimestamp.generatedAt = "2026-02-31T10:06:00.000Z";
+  const impossibleTimestampPath = path.join(
+    env.root,
+    "impossible-timestamp-evidence.json",
+  );
+  await writeFile(
+    impossibleTimestampPath,
+    `${JSON.stringify(impossibleTimestamp)}\n`,
+  );
+  await expectCode("INVALID_EVIDENCE", () =>
+    verifyEvidence({
+      evidencePath: impossibleTimestampPath,
+      deliverablePath,
+    }),
+  );
+
+  const evidenceLink = path.join(env.root, "evidence-link.json");
+  const deliverableLink = path.join(env.root, "deliverable-link.json");
+  await symlink(validEvidencePath, evidenceLink);
+  await symlink(deliverablePath, deliverableLink);
+  await expectCode("UNSAFE_EVIDENCE_PATH", () =>
+    verifyEvidence({ evidencePath: evidenceLink, deliverablePath }),
+  );
+  await expectCode("UNSAFE_DELIVERABLE_PATH", () =>
+    verifyEvidence({
+      evidencePath: validEvidencePath,
+      deliverablePath: deliverableLink,
+    }),
+  );
 });
 
 test("wrong mint fails closed", async () => {
@@ -395,6 +627,65 @@ test("transaction time must match the invoice verification window", async () => 
   );
 });
 
+test("expired requests and payments outside the fixed window fail closed", async () => {
+  const env = await setup();
+  const createdAt = "2026-07-23T10:00:00.000Z";
+  const invoice = await createApproved(input(), {
+    ...env,
+    clock: () => new Date(createdAt),
+  });
+  const expiresAtSeconds = Date.parse(invoice.expiresAt) / 1000;
+
+  const noHistory = async (_rpcUrl, method) => {
+    assert.equal(method, "getSignaturesForAddress");
+    return [];
+  };
+  const expired = await checkInvoice(invoice.id, {
+    storagePath: env.storagePath,
+    rpcCall: noHistory,
+    clock: () => new Date((expiresAtSeconds + 301) * 1000),
+  });
+  assert.deepEqual(expired, {
+    invoiceId: invoice.id,
+    status: "expired",
+    code: "PAYMENT_WINDOW_EXPIRED",
+    message: "No finalized payment was found before the request expired",
+    expiresAt: invoice.expiresAt,
+  });
+  assert.equal(
+    (
+      await listInvoices({
+        storagePath: env.storagePath,
+        clock: () => new Date((expiresAtSeconds + 301) * 1000),
+      })
+    )[0].status,
+    "expired",
+  );
+
+  const boundary = rpcFixture(invoice, {
+    blockTime: expiresAtSeconds + 300,
+  });
+  assert.equal(
+    (
+      await verifyPayment(invoice, {
+        rpcCall: boundary.rpcCall,
+        clock: () => new Date((expiresAtSeconds + 300) * 1000),
+      })
+    ).status,
+    "paid",
+  );
+
+  const late = rpcFixture(invoice, {
+    blockTime: expiresAtSeconds + 301,
+  });
+  await expectCode("PAYMENT_AFTER_EXPIRY", () =>
+    verifyPayment(invoice, {
+      rpcCall: late.rpcCall,
+      clock: () => new Date((expiresAtSeconds + 301) * 1000),
+    }),
+  );
+});
+
 test("memo, reference, and transaction signature must match exactly", async () => {
   const env = await setup();
   const invoice = await createApproved(input(), env);
@@ -422,6 +713,13 @@ test("memo, reference, and transaction signature must match exactly", async () =
   });
   await expectCode("REFERENCE_INSTRUCTION_MISMATCH", () =>
     verifyPayment(invoice, { rpcCall: referenceNotAtExactTail.rpcCall }),
+  );
+
+  const auxiliaryDestination = rpcFixture(invoice, {
+    destinationTokenAccount: base58Encode(Buffer.alloc(32, 6)),
+  });
+  await expectCode("TRANSFER_DESTINATION_MISMATCH", () =>
+    verifyPayment(invoice, { rpcCall: auxiliaryDestination.rpcCall }),
   );
 
   const wrongSignature = rpcFixture(invoice, {
@@ -572,8 +870,9 @@ test("invoice ids are canonicalized to lowercase before persistence", async () =
   const env = await setup();
   const created = await createApproved(input({ invoiceId: "CaseID" }), env);
   assert.equal(created.id, "caseid");
-  await expectCode("INVOICE_EXISTS", () =>
-    createApproved(input({ invoiceId: "caseid" }), env),
+  assert.equal(
+    (await createApproved(input({ invoiceId: "caseid" }), env)).idempotent,
+    true,
   );
   assert.deepEqual(
     (await listInvoices({ storagePath: env.storagePath })).map(({ id }) => id),

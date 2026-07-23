@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import path from "node:path";
 import {
   DEFAULT_PATHS,
   ProofPayError,
@@ -8,6 +9,7 @@ import {
   hashDeliverable,
   listInvoices,
   previewInvoice,
+  verifyEvidence,
   writeEvidence,
 } from "../src/core.mjs";
 
@@ -20,8 +22,9 @@ const VALUE_FLAGS = new Set([
   "approve-digest",
   "approve-reference",
   "approve-uri",
+  "evidence",
 ]);
-const BOOLEAN_FLAGS = new Set(["json"]);
+const BOOLEAN_FLAGS = new Set(["compact", "json", "online"]);
 
 function parseFlags(args) {
   const parsed = {};
@@ -100,18 +103,69 @@ function print(value) {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
+function compactInvoice(invoice) {
+  return {
+    id: invoice.id,
+    status: invoice.status,
+    network: invoice.network,
+    amount: invoice.amount,
+    currency: invoice.currency,
+    expiresAt: invoice.expiresAt,
+    ...(invoice.payment?.signature
+      ? { signature: invoice.payment.signature }
+      : {}),
+  };
+}
+
+function compactCheck(result) {
+  return {
+    invoiceId: result.invoiceId,
+    status: result.status,
+    ...(result.code ? { code: result.code } : {}),
+    ...(result.expiresAt ? { expiresAt: result.expiresAt } : {}),
+    ...(result.payment?.signature
+      ? {
+          signature: result.payment.signature,
+          slot: result.payment.slot,
+          blockTime: result.payment.blockTime,
+          confirmationStatus: result.payment.confirmationStatus,
+        }
+      : {}),
+    ...(typeof result.idempotent === "boolean"
+      ? { idempotent: result.idempotent }
+      : {}),
+  };
+}
+
+function compactWrittenEvidence(result) {
+  const relative = (value) => path.relative(process.cwd(), value);
+  return {
+    schemaVersion: result.evidence.schemaVersion,
+    invoiceId: result.evidence.invoice.id,
+    status: "evidence-written",
+    paymentSignature: result.evidence.payment.signature,
+    deliverableSha256: result.evidence.deliverable.sha256,
+    bundle: relative(result.bundle),
+    files: {
+      json: relative(result.files.json),
+      markdown: relative(result.files.markdown),
+    },
+  };
+}
+
 function usage() {
   return {
     usage: [
       "proofpay hash --deliverable <relative-path>",
       "proofpay preview --invoice <id> --recipient <pubkey> --amount <EURC> --deliverable <relative-path> [--network devnet|mainnet]",
       "proofpay create --invoice <id> --recipient <pubkey> --amount <EURC> --deliverable <relative-path> [--network devnet|mainnet] --approve-digest <sha256> --approve-reference <pubkey> --approve-uri <solana-pay-uri>",
-      "proofpay list",
-      "proofpay check --invoice <id>",
-      "proofpay evidence --invoice <id>",
+      "proofpay list [--compact]",
+      "proofpay check --invoice <id> [--compact]",
+      "proofpay evidence --invoice <id> [--compact]",
+      "proofpay verify-evidence --evidence <path> --deliverable <path> [--online]",
     ],
     safety:
-      "Read-only verification only. This utility has no signing, sending, or refund capability.",
+      "This utility can persist local requests, paid checkpoints, and evidence. It has no signing, transaction-submission, transfer, or refund capability.",
   };
 }
 
@@ -190,18 +244,19 @@ async function main(argv) {
   }
 
   if (command === "list") {
-    assertOnly(flags, new Set(["json"]));
-    print(await listInvoices({ storagePath: paths.storagePath }));
+    assertOnly(flags, new Set(["compact", "json"]));
+    const invoices = await listInvoices({ storagePath: paths.storagePath });
+    print(flags.compact ? invoices.map(compactInvoice) : invoices);
     return;
   }
 
   if (command === "check") {
-    assertOnly(flags, new Set(["invoice", "json"]));
+    assertOnly(flags, new Set(["invoice", "compact", "json"]));
     requireFlags(flags, ["invoice"]);
     const result = await checkInvoice(flags.invoice, {
       storagePath: paths.storagePath,
     });
-    print(result);
+    print(flags.compact ? compactCheck(result) : result);
     if (result.status !== "paid") {
       process.exitCode = 2;
     }
@@ -209,12 +264,24 @@ async function main(argv) {
   }
 
   if (command === "evidence") {
-    assertOnly(flags, new Set(["invoice", "json"]));
+    assertOnly(flags, new Set(["invoice", "compact", "json"]));
     requireFlags(flags, ["invoice"]);
+    const written = await writeEvidence(flags.invoice, {
+      storagePath: paths.storagePath,
+      evidenceDir: paths.evidenceDir,
+    });
+    print(flags.compact ? compactWrittenEvidence(written) : written);
+    return;
+  }
+
+  if (command === "verify-evidence") {
+    assertOnly(flags, new Set(["evidence", "deliverable", "json", "online"]));
+    requireFlags(flags, ["evidence", "deliverable"]);
     print(
-      await writeEvidence(flags.invoice, {
-        storagePath: paths.storagePath,
-        evidenceDir: paths.evidenceDir,
+      await verifyEvidence({
+        evidencePath: flags.evidence,
+        deliverablePath: flags.deliverable,
+        online: flags.online === true,
       }),
     );
     return;

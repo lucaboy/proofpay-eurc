@@ -50,15 +50,20 @@ const MEMO_PROGRAM_IDS = new Set([
 ]);
 const SPL_TOKEN_PROGRAM_ID =
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const ASSOCIATED_TOKEN_PROGRAM_ID =
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const STORE_SCHEMA_VERSION = 1;
-const INVOICE_SCHEMA_VERSION = 2;
+const INVOICE_SCHEMA_VERSION = 3;
 const EURC_DECIMALS = 6;
 const MAX_RPC_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_DELIVERABLE_BYTES = 1024 * 1024 * 1024;
+const MAX_EVIDENCE_BYTES = 1024 * 1024;
 const APPROVAL_SCHEMA_VERSION = 1;
 const STORE_LOCK_TIMEOUT_MS = 10_000;
 const STORE_LOCK_STALE_MS = 60_000;
 const BLOCK_TIME_SKEW_MS = 5 * 60 * 1000;
+export const PAYMENT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+const PAYMENT_WINDOW_MS = PAYMENT_WINDOW_SECONDS * 1000;
 
 export class ProofPayError extends Error {
   constructor(code, message, details = undefined) {
@@ -93,6 +98,20 @@ function nowIso(clock = () => new Date()) {
     fail("INVALID_CLOCK", "Clock returned an invalid date");
   }
   return date.toISOString();
+}
+
+function isCanonicalIsoTimestamp(value) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+  ) {
+    return false;
+  }
+  const timestamp = Date.parse(value);
+  return (
+    !Number.isNaN(timestamp) &&
+    new Date(timestamp).toISOString() === value
+  );
 }
 
 export function base58Encode(bytes) {
@@ -178,6 +197,120 @@ export function assertSolanaPublicKey(value, field = "public key") {
     fail("INVALID_PUBLIC_KEY", `${field} cannot be the all-zero key`);
   }
   return value;
+}
+
+const ED25519_FIELD = (1n << 255n) - 19n;
+
+function mod(value) {
+  const reduced = value % ED25519_FIELD;
+  return reduced >= 0n ? reduced : reduced + ED25519_FIELD;
+}
+
+function modPow(base, exponent) {
+  let result = 1n;
+  let factor = mod(base);
+  let power = exponent;
+  while (power > 0n) {
+    if ((power & 1n) === 1n) {
+      result = mod(result * factor);
+    }
+    factor = mod(factor * factor);
+    power >>= 1n;
+  }
+  return result;
+}
+
+const ED25519_D = mod(
+  -121665n * modPow(121666n, ED25519_FIELD - 2n),
+);
+const ED25519_SQRT_MINUS_ONE = modPow(
+  2n,
+  (ED25519_FIELD - 1n) / 4n,
+);
+
+function littleEndianBigInt(bytes) {
+  let value = 0n;
+  for (let index = bytes.length - 1; index >= 0; index -= 1) {
+    value = value * 256n + BigInt(bytes[index]);
+  }
+  return value;
+}
+
+function isEd25519Point(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.length !== 32) {
+    return false;
+  }
+  const encoded = Buffer.from(bytes);
+  const sign = encoded[31] >>> 7;
+  encoded[31] &= 0x7f;
+  const y = littleEndianBigInt(encoded);
+  if (y >= ED25519_FIELD) {
+    return false;
+  }
+
+  const ySquared = mod(y * y);
+  const numerator = mod(ySquared - 1n);
+  const denominator = mod(ED25519_D * ySquared + 1n);
+  if (denominator === 0n) {
+    return false;
+  }
+  const xSquared = mod(
+    numerator * modPow(denominator, ED25519_FIELD - 2n),
+  );
+  let x = modPow(xSquared, (ED25519_FIELD + 3n) / 8n);
+  if (mod(x * x - xSquared) !== 0n) {
+    x = mod(x * ED25519_SQRT_MINUS_ONE);
+  }
+  if (mod(x * x - xSquared) !== 0n) {
+    return false;
+  }
+  return !(x === 0n && sign === 1);
+}
+
+function createProgramAddress(seeds, programId) {
+  const programBytes = base58Decode(programId);
+  if (
+    seeds.length > 16 ||
+    seeds.some(
+      (seed) => !(seed instanceof Uint8Array) || seed.length > 32,
+    )
+  ) {
+    fail("INVALID_PDA_SEEDS", "Program-derived address seeds are invalid");
+  }
+  const digest = createHash("sha256")
+    .update(Buffer.concat([
+      ...seeds.map((seed) => Buffer.from(seed)),
+      programBytes,
+      Buffer.from("ProgramDerivedAddress", "utf8"),
+    ]))
+    .digest();
+  return isEd25519Point(digest) ? null : digest;
+}
+
+export function deriveAssociatedTokenAddress(owner, mint) {
+  const ownerBytes = base58Decode(
+    assertSolanaPublicKey(owner, "token account owner"),
+  );
+  const mintBytes = base58Decode(assertSolanaPublicKey(mint, "token mint"));
+  const tokenProgramBytes = base58Decode(SPL_TOKEN_PROGRAM_ID);
+  for (let bump = 255; bump >= 0; bump -= 1) {
+    const address = createProgramAddress(
+      [
+        ownerBytes,
+        tokenProgramBytes,
+        mintBytes,
+        Uint8Array.of(bump),
+      ],
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+    );
+    if (address !== null) {
+      return base58Encode(address);
+    }
+  }
+  fail(
+    "ASSOCIATED_TOKEN_ADDRESS_FAILED",
+    "Unable to derive the canonical associated token account",
+  );
 }
 
 function assertSignature(value) {
@@ -418,9 +551,16 @@ export function deriveReference({
   recipient,
   amountAtomic,
   deliverableSha256,
+  validForSeconds = PAYMENT_WINDOW_SECONDS,
 }) {
+  if (validForSeconds !== PAYMENT_WINDOW_SECONDS) {
+    fail(
+      "INVALID_PAYMENT_WINDOW",
+      `Payment window must be exactly ${PAYMENT_WINDOW_SECONDS} seconds`,
+    );
+  }
   const digest = createHash("sha256")
-    .update("ProofPay EURC reference v1\0", "utf8")
+    .update("ProofPay EURC reference v2\0", "utf8")
     .update(normalizeInvoiceId(invoiceId), "utf8")
     .update("\0", "utf8")
     .update(normalizeNetwork(network), "utf8")
@@ -430,6 +570,8 @@ export function deriveReference({
     .update(String(amountAtomic), "utf8")
     .update("\0", "utf8")
     .update(deliverableSha256, "utf8")
+    .update("\0", "utf8")
+    .update(String(validForSeconds), "utf8")
     .digest();
   return base58Encode(digest);
 }
@@ -488,6 +630,7 @@ function prepareInvoiceTerms(
     recipient: normalizedRecipient,
     amountAtomic: normalizedAmount.amountAtomic,
     deliverableSha256: deliverable.sha256,
+    validForSeconds: PAYMENT_WINDOW_SECONDS,
   });
   const label = "ProofPay EURC";
   const message = `ProofPay invoice ${id}`;
@@ -511,6 +654,7 @@ function prepareInvoiceTerms(
     recipient: normalizedRecipient,
     amount: normalizedAmount.amount,
     amountAtomic: normalizedAmount.amountAtomic,
+    validForSeconds: PAYMENT_WINDOW_SECONDS,
     reference,
     memo,
     label,
@@ -597,7 +741,8 @@ function validateStoredInvoice(invoice, key) {
     invoice.rpcUrl !== NETWORKS[network].rpcUrl ||
     invoice.mint !== NETWORKS[network].eurcMint ||
     invoice.currency !== "EURC" ||
-    invoice.decimals !== EURC_DECIMALS
+    invoice.decimals !== EURC_DECIMALS ||
+    invoice.validForSeconds !== PAYMENT_WINDOW_SECONDS
   ) {
     fail("CORRUPT_STORE", `Stored invoice ${key} has invalid EURC terms`);
   }
@@ -635,6 +780,7 @@ function validateStoredInvoice(invoice, key) {
     recipient: invoice.recipient,
     amountAtomic: invoice.amountAtomic,
     deliverableSha256: invoice.deliverable.sha256,
+    validForSeconds: invoice.validForSeconds,
   });
   if (invoice.reference !== expectedReference) {
     fail("CORRUPT_STORE", `Stored invoice ${key} has invalid reference`);
@@ -666,18 +812,24 @@ function validateStoredInvoice(invoice, key) {
   }
   for (const [field, timestamp] of [
     ["createdAt", invoice.createdAt],
+    ["expiresAt", invoice.expiresAt],
     ["updatedAt", invoice.updatedAt],
   ]) {
     if (
-      typeof timestamp !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(timestamp) ||
-      Number.isNaN(Date.parse(timestamp))
+      !isCanonicalIsoTimestamp(timestamp)
     ) {
       fail(
         "CORRUPT_STORE",
         `Stored invoice ${key} has invalid ${field}`,
       );
     }
+  }
+  if (
+    Date.parse(invoice.expiresAt) - Date.parse(invoice.createdAt) !==
+      PAYMENT_WINDOW_MS ||
+    Date.parse(invoice.updatedAt) < Date.parse(invoice.createdAt)
+  ) {
+    fail("CORRUPT_STORE", `Stored invoice ${key} has invalid time bounds`);
   }
   if (invoice.status === "paid") {
     assertPlainObject(
@@ -694,16 +846,14 @@ function validateStoredInvoice(invoice, key) {
       invoice.payment.blockTime * 1000 <
         Date.parse(invoice.createdAt) - BLOCK_TIME_SKEW_MS ||
       invoice.payment.blockTime * 1000 >
+        Date.parse(invoice.expiresAt) + BLOCK_TIME_SKEW_MS ||
+      invoice.payment.blockTime * 1000 >
         Date.parse(invoice.payment.verifiedAt) + BLOCK_TIME_SKEW_MS ||
       invoice.payment.confirmedAtomic !== invoice.amountAtomic ||
       invoice.payment.confirmedAmount !== invoice.amount ||
       invoice.payment.confirmationStatus !== "finalized" ||
       invoice.payment.rpcUrl !== invoice.rpcUrl ||
-      typeof invoice.payment.verifiedAt !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(
-        invoice.payment.verifiedAt,
-      ) ||
-      Number.isNaN(Date.parse(invoice.payment.verifiedAt))
+      !isCanonicalIsoTimestamp(invoice.payment.verifiedAt)
     ) {
       fail("CORRUPT_STORE", `Stored payment ${key} is inconsistent`);
     }
@@ -1027,6 +1177,36 @@ async function withFileLock(targetPath, fn, timeoutMs) {
   }
 }
 
+function storedInvoiceMatchesPreview(invoice, preview) {
+  const keys = [
+    "schemaVersion",
+    "id",
+    "network",
+    "rpcUrl",
+    "currency",
+    "mint",
+    "decimals",
+    "recipient",
+    "amount",
+    "amountAtomic",
+    "validForSeconds",
+    "reference",
+    "memo",
+    "label",
+    "message",
+    "solanaPayUri",
+  ];
+  return (
+    keys.every((key) => invoice[key] === preview[key]) &&
+    JSON.stringify(invoice.deliverable) ===
+      JSON.stringify(preview.deliverable) &&
+    invoice.approval?.deliverableSha256 ===
+      preview.approval.deliverableSha256 &&
+    invoice.approval?.reference === preview.approval.reference &&
+    invoice.approval?.solanaPayUri === preview.approval.solanaPayUri
+  );
+}
+
 export async function createInvoice(
   input,
   {
@@ -1043,7 +1223,17 @@ export async function createInvoice(
     async () => {
       const store = await loadStore(storagePath);
       if (Object.hasOwn(store.invoices, preview.id)) {
-        fail("INVOICE_EXISTS", `Invoice already exists: ${preview.id}`);
+        const existing = store.invoices[preview.id];
+        if (storedInvoiceMatchesPreview(existing, preview)) {
+          return {
+            ...jsonClone(existing),
+            idempotent: true,
+          };
+        }
+        fail(
+          "INVOICE_CONFLICT",
+          `Invoice id already belongs to different immutable terms: ${preview.id}`,
+        );
       }
       if (
         Object.values(store.invoices).some(
@@ -1057,6 +1247,9 @@ export async function createInvoice(
       }
 
       const timestamp = nowIso(clock);
+      const expiresAt = new Date(
+        Date.parse(timestamp) + PAYMENT_WINDOW_MS,
+      ).toISOString();
       const { approval, ...approvedTerms } = preview;
       const invoice = {
         ...approvedTerms,
@@ -1067,12 +1260,16 @@ export async function createInvoice(
         },
         status: "pending",
         createdAt: timestamp,
+        expiresAt,
         updatedAt: timestamp,
         payment: null,
       };
       store.invoices[invoice.id] = invoice;
       await saveStore(store, storagePath);
-      return jsonClone(invoice);
+      return {
+        ...jsonClone(invoice),
+        idempotent: false,
+      };
     },
     lockTimeoutMs,
   );
@@ -1080,11 +1277,23 @@ export async function createInvoice(
 
 export async function listInvoices({
   storagePath = DEFAULT_PATHS.storagePath,
+  clock,
 } = {}) {
   const store = await loadStore(storagePath);
+  const listedAtMs = Date.parse(nowIso(clock));
   return Object.values(store.invoices)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-    .map((invoice) => jsonClone(invoice));
+    .map((invoice) => {
+      const listed = jsonClone(invoice);
+      if (
+        listed.status === "pending" &&
+        listedAtMs > Date.parse(listed.expiresAt) + BLOCK_TIME_SKEW_MS
+      ) {
+        listed.status = "expired";
+        listed.statusDerivedAt = new Date(listedAtMs).toISOString();
+      }
+      return listed;
+    });
 }
 
 function validateRpcUrl(rpcUrl) {
@@ -1504,6 +1713,15 @@ function verifyPaymentInstruction(
       "SPL transfer accounts do not match the invoice EURC transfer",
     );
   }
+  if (
+    destinationAccount.pubkey !==
+    deriveAssociatedTokenAddress(invoice.recipient, invoice.mint)
+  ) {
+    fail(
+      "TRANSFER_DESTINATION_MISMATCH",
+      "SPL destination must be the recipient's canonical associated token account",
+    );
+  }
 
   const referenceAccounts = transferInstruction.accounts.filter(
     ({ pubkey }) => pubkey === invoice.reference,
@@ -1575,6 +1793,8 @@ export async function verifyPayment(
 ) {
   validateStoredInvoice(invoice, invoice.id);
   validateRpcUrl(invoice.rpcUrl);
+  const checkedAtMs = Date.parse(nowIso(clock));
+  const expiresAtMs = Date.parse(invoice.expiresAt);
 
   const signatures = await rpcCall(
     invoice.rpcUrl,
@@ -1597,6 +1817,14 @@ export async function verifyPayment(
     );
   }
   if (signatures.length === 0) {
+    if (checkedAtMs > expiresAtMs + BLOCK_TIME_SKEW_MS) {
+      return {
+        status: "expired",
+        code: "PAYMENT_WINDOW_EXPIRED",
+        message: "No finalized payment was found before the request expired",
+        expiresAt: invoice.expiresAt,
+      };
+    }
     return {
       status: "pending",
       code: "PAYMENT_NOT_FOUND",
@@ -1661,7 +1889,6 @@ export async function verifyPayment(
     );
   }
   const createdAtMs = Date.parse(invoice.createdAt);
-  const checkedAtMs = Date.parse(nowIso(clock));
   const blockTimeMs = transaction.blockTime * 1000;
   if (blockTimeMs < createdAtMs - BLOCK_TIME_SKEW_MS) {
     fail(
@@ -1673,6 +1900,12 @@ export async function verifyPayment(
     fail(
       "PAYMENT_BLOCK_TIME_IN_FUTURE",
       "Finalized transaction block time is ahead of the verification window",
+    );
+  }
+  if (blockTimeMs > expiresAtMs + BLOCK_TIME_SKEW_MS) {
+    fail(
+      "PAYMENT_AFTER_EXPIRY",
+      "Finalized transaction falls outside the approved payment window",
     );
   }
   const signatureBlockTime = successfulFinalized[0].blockTime;
@@ -1895,7 +2128,7 @@ export async function generateEvidence(
   }
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt: nowIso(clock),
     approval: jsonClone(invoice.approval),
     invoice: {
@@ -1906,6 +2139,8 @@ export async function generateEvidence(
       recipient: invoice.recipient,
       amount: invoice.amount,
       amountAtomic: invoice.amountAtomic,
+      validForSeconds: invoice.validForSeconds,
+      expiresAt: invoice.expiresAt,
       reference: invoice.reference,
       memo: invoice.memo,
       solanaPayUri: invoice.solanaPayUri,
@@ -1915,19 +2150,569 @@ export async function generateEvidence(
     assertions: {
       finalized: true,
       transactionSucceeded: true,
-      uniqueReference: true,
+      uniqueSuccessfulFinalizedReference: true,
       exactMemo: true,
       exactMint: true,
       exactRecipientDelta: true,
+      withinPaymentWindow: true,
       previewMatchedAtCreation: true,
       nonCustodial: true,
     },
     limitations: [
-      "Verifies a finalized on-chain payment and the stored deliverable digest only.",
+      "Records a finalized on-chain payment verified by ProofPay; offline verification independently checks only the schema, canonical terms, timestamps, and deliverable digest.",
       "The preview commitment proves that create received matching digest, reference, and URI values; the external checkpoint audit is the source for who approved them.",
       "Does not prove authorship, identity, legal acceptance, tax treatment, or refund entitlement.",
     ],
   };
+}
+
+const EVIDENCE_ASSERTION_KEYS = Object.freeze([
+  "exactMemo",
+  "exactMint",
+  "exactRecipientDelta",
+  "finalized",
+  "nonCustodial",
+  "previewMatchedAtCreation",
+  "transactionSucceeded",
+  "uniqueSuccessfulFinalizedReference",
+  "withinPaymentWindow",
+]);
+
+const EVIDENCE_LIMITATIONS = Object.freeze([
+  "Records a finalized on-chain payment verified by ProofPay; offline verification independently checks only the schema, canonical terms, timestamps, and deliverable digest.",
+  "The preview commitment proves that create received matching digest, reference, and URI values; the external checkpoint audit is the source for who approved them.",
+  "Does not prove authorship, identity, legal acceptance, tax treatment, or refund entitlement.",
+]);
+
+function invalidEvidence(message, details) {
+  fail("INVALID_EVIDENCE", message, details);
+}
+
+function assertExactEvidenceKeys(value, keys, label) {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    invalidEvidence(`${label} must be a plain object`);
+  }
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  if (
+    actual.length !== expected.length ||
+    actual.some((key, index) => key !== expected[index])
+  ) {
+    invalidEvidence(`${label} has unexpected or missing fields`);
+  }
+}
+
+function assertEvidenceIsoTimestamp(value, label) {
+  if (!isCanonicalIsoTimestamp(value)) {
+    invalidEvidence(`${label} must be a canonical ISO-8601 timestamp`);
+  }
+  return Date.parse(value);
+}
+
+function normalizeVerifierFilePath(value, label) {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > 4096 ||
+    value.includes("\0")
+  ) {
+    fail(
+      `INVALID_${label.toUpperCase()}_PATH`,
+      `${label} path must be a non-empty filesystem path`,
+    );
+  }
+  return path.resolve(value);
+}
+
+async function openVerifierFile(
+  inputPath,
+  { label, maxBytes, emptyCode, tooLargeCode },
+) {
+  const resolved = normalizeVerifierFilePath(inputPath, label);
+  const parent = path.dirname(resolved);
+  await statDirectoryWithoutSymlink(
+    parent,
+    `UNSAFE_${label.toUpperCase()}_PATH`,
+  );
+
+  let pathStat;
+  try {
+    pathStat = await lstat(resolved);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      fail(
+        `${label.toUpperCase()}_NOT_FOUND`,
+        `${label} file does not exist: ${resolved}`,
+      );
+    }
+    throw error;
+  }
+  if (pathStat.isSymbolicLink() || !pathStat.isFile()) {
+    fail(
+      `UNSAFE_${label.toUpperCase()}_PATH`,
+      `${label} path must identify a regular file, not a symlink`,
+    );
+  }
+  if (pathStat.size === 0) {
+    fail(emptyCode, `${label} file cannot be empty`);
+  }
+  if (pathStat.size > maxBytes) {
+    fail(tooLargeCode, `${label} file exceeds the safety limit`);
+  }
+
+  const [parentReal, targetReal] = await Promise.all([
+    realpath(parent),
+    realpath(resolved),
+  ]);
+  if (targetReal !== path.join(parentReal, path.basename(resolved))) {
+    fail(
+      `UNSAFE_${label.toUpperCase()}_PATH`,
+      `${label} path resolves through an unsafe filesystem entry`,
+    );
+  }
+
+  const noFollow =
+    typeof fsConstants.O_NOFOLLOW === "number" ? fsConstants.O_NOFOLLOW : 0;
+  let handle;
+  try {
+    handle = await open(resolved, fsConstants.O_RDONLY | noFollow);
+  } catch (error) {
+    if (error?.code === "ELOOP") {
+      fail(
+        `UNSAFE_${label.toUpperCase()}_PATH`,
+        `${label} file cannot be a symbolic link`,
+      );
+    }
+    throw error;
+  }
+
+  const openedStat = await handle.stat();
+  if (
+    !openedStat.isFile() ||
+    openedStat.dev !== pathStat.dev ||
+    openedStat.ino !== pathStat.ino ||
+    openedStat.size !== pathStat.size
+  ) {
+    await handle.close();
+    fail(
+      `${label.toUpperCase()}_CHANGED`,
+      `${label} file changed while it was being opened`,
+    );
+  }
+  return { handle, openedStat };
+}
+
+async function readEvidenceFile(evidencePath) {
+  const opened = await openVerifierFile(evidencePath, {
+    label: "evidence",
+    maxBytes: MAX_EVIDENCE_BYTES,
+    emptyCode: "EMPTY_EVIDENCE",
+    tooLargeCode: "EVIDENCE_TOO_LARGE",
+  });
+  try {
+    const bytes = await opened.handle.readFile();
+    const finalStat = await opened.handle.stat();
+    if (
+      finalStat.size !== opened.openedStat.size ||
+      finalStat.mtimeMs !== opened.openedStat.mtimeMs ||
+      finalStat.ctimeMs !== opened.openedStat.ctimeMs ||
+      bytes.length !== opened.openedStat.size
+    ) {
+      fail(
+        "EVIDENCE_CHANGED",
+        "Evidence file changed while it was being read",
+      );
+    }
+
+    let raw;
+    try {
+      raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+      invalidEvidence("Evidence must be valid UTF-8 JSON");
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      invalidEvidence("Evidence must be valid JSON");
+    }
+  } finally {
+    await opened.handle.close();
+  }
+}
+
+async function hashVerifierDeliverable(deliverablePath) {
+  const opened = await openVerifierFile(deliverablePath, {
+    label: "deliverable",
+    maxBytes: MAX_DELIVERABLE_BYTES,
+    emptyCode: "EMPTY_DELIVERABLE",
+    tooLargeCode: "DELIVERABLE_TOO_LARGE",
+  });
+  try {
+    const hash = createHash("sha256");
+    const buffer = Buffer.allocUnsafe(64 * 1024);
+    let offset = 0;
+    while (true) {
+      const { bytesRead } = await opened.handle.read(
+        buffer,
+        0,
+        buffer.length,
+        offset,
+      );
+      if (bytesRead === 0) {
+        break;
+      }
+      hash.update(buffer.subarray(0, bytesRead));
+      offset += bytesRead;
+    }
+    const finalStat = await opened.handle.stat();
+    if (
+      finalStat.size !== opened.openedStat.size ||
+      finalStat.mtimeMs !== opened.openedStat.mtimeMs ||
+      finalStat.ctimeMs !== opened.openedStat.ctimeMs
+    ) {
+      fail(
+        "DELIVERABLE_CHANGED",
+        "Deliverable changed while it was being hashed",
+      );
+    }
+    return {
+      size: finalStat.size,
+      sha256: hash.digest("hex"),
+    };
+  } finally {
+    await opened.handle.close();
+  }
+}
+
+function deriveEvidenceTerms(evidence, deliverable) {
+  let expected;
+  try {
+    expected = prepareInvoiceTerms(
+      {
+        invoiceId: evidence.invoice.id,
+        network: evidence.invoice.network,
+        recipient: evidence.invoice.recipient,
+        amount: evidence.invoice.amount,
+      },
+      deliverable,
+    );
+  } catch (error) {
+    if (error instanceof ProofPayError) {
+      invalidEvidence("Invoice contains invalid canonical terms", {
+        cause: error.code,
+      });
+    }
+    throw error;
+  }
+  return expected;
+}
+
+function assertEvidenceSignature(value) {
+  let decoded;
+  try {
+    decoded = base58Decode(value);
+  } catch {
+    invalidEvidence("Payment signature is not valid base58");
+  }
+  if (decoded.length !== 64 || base58Encode(decoded) !== value) {
+    invalidEvidence(
+      "Payment signature must be a canonical base58-encoded 64-byte value",
+    );
+  }
+}
+
+export async function verifyEvidence({
+  evidencePath,
+  deliverablePath,
+  online = false,
+  rpcCall,
+  clock,
+} = {}) {
+  const [evidence, actualDeliverable] = await Promise.all([
+    readEvidenceFile(evidencePath),
+    hashVerifierDeliverable(deliverablePath),
+  ]);
+
+  assertExactEvidenceKeys(
+    evidence,
+    [
+      "schemaVersion",
+      "generatedAt",
+      "approval",
+      "invoice",
+      "deliverable",
+      "payment",
+      "assertions",
+      "limitations",
+    ],
+    "Evidence",
+  );
+  if (evidence.schemaVersion !== 3) {
+    invalidEvidence("Unsupported evidence schema version");
+  }
+  const generatedAtMs = assertEvidenceIsoTimestamp(
+    evidence.generatedAt,
+    "generatedAt",
+  );
+
+  assertExactEvidenceKeys(
+    evidence.deliverable,
+    ["path", "size", "sha256"],
+    "Deliverable evidence",
+  );
+  let recordedDeliverablePath;
+  try {
+    recordedDeliverablePath = normalizeRelativeDeliverable(
+      evidence.deliverable.path,
+    );
+  } catch (error) {
+    if (error instanceof ProofPayError) {
+      invalidEvidence("Evidence contains an invalid deliverable path", {
+        cause: error.code,
+      });
+    }
+    throw error;
+  }
+  if (
+    !Number.isSafeInteger(evidence.deliverable.size) ||
+    evidence.deliverable.size <= 0 ||
+    evidence.deliverable.size > MAX_DELIVERABLE_BYTES ||
+    typeof evidence.deliverable.sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(evidence.deliverable.sha256)
+  ) {
+    invalidEvidence("Evidence contains invalid deliverable metadata");
+  }
+  if (actualDeliverable.size !== evidence.deliverable.size) {
+    fail(
+      "DELIVERABLE_SIZE_MISMATCH",
+      "Provided deliverable size does not match the evidence",
+    );
+  }
+  if (actualDeliverable.sha256 !== evidence.deliverable.sha256) {
+    fail(
+      "DELIVERABLE_DIGEST_MISMATCH",
+      "Provided deliverable SHA-256 does not match the evidence",
+    );
+  }
+
+  assertExactEvidenceKeys(
+    evidence.invoice,
+    [
+      "id",
+      "network",
+      "currency",
+      "mint",
+      "recipient",
+      "amount",
+      "amountAtomic",
+      "validForSeconds",
+      "expiresAt",
+      "reference",
+      "memo",
+      "solanaPayUri",
+    ],
+    "Invoice evidence",
+  );
+  const expectedTerms = deriveEvidenceTerms(evidence, {
+    path: recordedDeliverablePath,
+    size: actualDeliverable.size,
+    sha256: actualDeliverable.sha256,
+  });
+  for (const key of [
+    "id",
+    "network",
+    "currency",
+    "mint",
+    "recipient",
+    "amount",
+    "amountAtomic",
+    "validForSeconds",
+    "reference",
+    "memo",
+    "solanaPayUri",
+  ]) {
+    if (evidence.invoice[key] !== expectedTerms[key]) {
+      invalidEvidence(`Invoice ${key} does not match canonical terms`);
+    }
+  }
+
+  assertExactEvidenceKeys(
+    evidence.approval,
+    [
+      "schemaVersion",
+      "kind",
+      "deliverableSha256",
+      "reference",
+      "solanaPayUri",
+      "recordedAt",
+    ],
+    "Approval evidence",
+  );
+  const recordedAtMs = assertEvidenceIsoTimestamp(
+    evidence.approval.recordedAt,
+    "approval.recordedAt",
+  );
+  const expiresAtMs = assertEvidenceIsoTimestamp(
+    evidence.invoice.expiresAt,
+    "invoice.expiresAt",
+  );
+  if (
+    evidence.approval.schemaVersion !== APPROVAL_SCHEMA_VERSION ||
+    evidence.approval.kind !== "preview-match" ||
+    evidence.approval.deliverableSha256 !== actualDeliverable.sha256 ||
+    evidence.approval.reference !== expectedTerms.reference ||
+    evidence.approval.solanaPayUri !== expectedTerms.solanaPayUri
+  ) {
+    invalidEvidence(
+      "Approval checkpoint does not match the canonical invoice terms",
+    );
+  }
+  if (
+    evidence.invoice.validForSeconds !== PAYMENT_WINDOW_SECONDS ||
+    expiresAtMs - recordedAtMs !== PAYMENT_WINDOW_MS
+  ) {
+    invalidEvidence(
+      "Invoice expiry does not match the approved fixed payment window",
+    );
+  }
+
+  assertExactEvidenceKeys(
+    evidence.payment,
+    [
+      "signature",
+      "slot",
+      "blockTime",
+      "confirmedAtomic",
+      "confirmedAmount",
+      "confirmationStatus",
+      "verifiedAt",
+      "rpcUrl",
+    ],
+    "Payment evidence",
+  );
+  assertEvidenceSignature(evidence.payment.signature);
+  const verifiedAtMs = assertEvidenceIsoTimestamp(
+    evidence.payment.verifiedAt,
+    "payment.verifiedAt",
+  );
+  if (
+    !Number.isSafeInteger(evidence.payment.slot) ||
+    evidence.payment.slot <= 0 ||
+    !Number.isSafeInteger(evidence.payment.blockTime) ||
+    evidence.payment.blockTime <= 0 ||
+    evidence.payment.confirmedAtomic !== expectedTerms.amountAtomic ||
+    evidence.payment.confirmedAmount !== expectedTerms.amount ||
+    evidence.payment.confirmationStatus !== "finalized" ||
+    evidence.payment.rpcUrl !== expectedTerms.rpcUrl
+  ) {
+    invalidEvidence("Payment record is inconsistent with the invoice terms");
+  }
+  const blockTimeMs = evidence.payment.blockTime * 1000;
+  if (
+    blockTimeMs < recordedAtMs - BLOCK_TIME_SKEW_MS ||
+    blockTimeMs > expiresAtMs + BLOCK_TIME_SKEW_MS ||
+    blockTimeMs > verifiedAtMs + BLOCK_TIME_SKEW_MS ||
+    verifiedAtMs < recordedAtMs ||
+    generatedAtMs < verifiedAtMs
+  ) {
+    invalidEvidence("Evidence timestamps are inconsistent");
+  }
+
+  assertExactEvidenceKeys(
+    evidence.assertions,
+    EVIDENCE_ASSERTION_KEYS,
+    "Evidence assertions",
+  );
+  if (
+    EVIDENCE_ASSERTION_KEYS.some(
+      (key) => evidence.assertions[key] !== true,
+    )
+  ) {
+    invalidEvidence("All generated evidence assertions must be true");
+  }
+  if (
+    !Array.isArray(evidence.limitations) ||
+    evidence.limitations.length !== EVIDENCE_LIMITATIONS.length ||
+    evidence.limitations.some(
+      (limitation, index) => limitation !== EVIDENCE_LIMITATIONS[index],
+    )
+  ) {
+    invalidEvidence("Evidence limitations are missing or modified");
+  }
+
+  const result = {
+    ok: true,
+    verification: online
+      ? "proofpay-online-evidence-v1"
+      : "proofpay-offline-evidence-v1",
+    evidenceSchemaVersion: evidence.schemaVersion,
+    invoiceId: expectedTerms.id,
+    network: expectedTerms.network,
+    paymentSignature: evidence.payment.signature,
+    deliverable: {
+      recordedPath: recordedDeliverablePath,
+      size: actualDeliverable.size,
+      sha256: actualDeliverable.sha256,
+    },
+    checks: {
+      evidenceSchema: true,
+      deliverableDigest: true,
+      deliverableSize: true,
+      canonicalInvoiceTerms: true,
+      previewCommitment: true,
+      paymentRecordSelfConsistent: true,
+      paymentWindow: true,
+      requiredLimitationsPresent: true,
+    },
+    scope: {
+      onChainLookupPerformed: online,
+      evidenceProducerAuthenticated: false,
+      statement: online
+        ? "This independently re-verifies the recorded payment against Solana and checks artifact integrity; it does not authenticate the evidence producer."
+        : "This verifies artifact integrity and evidence self-consistency offline; it does not independently query Solana or authenticate the evidence producer.",
+    },
+  };
+
+  if (!online) {
+    return result;
+  }
+
+  const syntheticInvoice = {
+    schemaVersion: INVOICE_SCHEMA_VERSION,
+    ...expectedTerms,
+    approval: jsonClone(evidence.approval),
+    status: "pending",
+    createdAt: evidence.approval.recordedAt,
+    expiresAt: evidence.invoice.expiresAt,
+    updatedAt: evidence.approval.recordedAt,
+    payment: null,
+  };
+  const chainPayment = await verifyPayment(syntheticInvoice, {
+    rpcCall,
+    clock,
+  });
+  if (
+    chainPayment.status !== "paid" ||
+    chainPayment.signature !== evidence.payment.signature ||
+    chainPayment.slot !== evidence.payment.slot ||
+    chainPayment.blockTime !== evidence.payment.blockTime ||
+    chainPayment.confirmedAtomic !== evidence.payment.confirmedAtomic ||
+    chainPayment.confirmedAmount !== evidence.payment.confirmedAmount ||
+    chainPayment.confirmationStatus !== evidence.payment.confirmationStatus ||
+    chainPayment.checkedRpcUrl !== evidence.payment.rpcUrl
+  ) {
+    fail(
+      "EVIDENCE_CHAIN_MISMATCH",
+      "Live Solana verification does not match the recorded payment evidence",
+    );
+  }
+  result.checks.onChainPayment = true;
+  return result;
 }
 
 function evidenceMarkdown(evidence) {
@@ -1940,6 +2725,8 @@ function evidenceMarkdown(evidence) {
     `- Mint: \`${invoice.mint}\``,
     `- Recipient: \`${invoice.recipient}\``,
     `- Amount: ${invoice.amount} ${invoice.currency}`,
+    `- Payment window: ${invoice.validForSeconds} seconds`,
+    `- Expires at: ${invoice.expiresAt}`,
     `- Reference: \`${invoice.reference}\``,
     `- Memo: \`${invoice.memo}\``,
     `- Deliverable: \`${deliverable.path}\``,

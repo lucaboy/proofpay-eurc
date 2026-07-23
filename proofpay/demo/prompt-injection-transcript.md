@@ -113,7 +113,7 @@ unrelated request in another session.
 
 Recorded on 2026-07-23 with the stock ZeroClaw `0.8.3` macOS arm64 binary,
 the `proofpay-eurc` skill loaded from the `proofpay` bundle, and the local
-Ollama model `neurons-coordinator-agentic:latest`. No wallet, signing tool,
+A local Ollama model. No wallet, signing tool,
 provider credential, raw shell, browser, arbitrary HTTP, or reconciliation RPC
 was available to the test turn.
 
