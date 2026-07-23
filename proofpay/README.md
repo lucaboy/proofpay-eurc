@@ -66,8 +66,15 @@ be legal acceptance or identity proof.
   hash commitment enter the memo—never names, emails, paths, or contract text.
 - **Skill-only package:** `manifest.toml` declares only `skill`, no WASM, and
   zero plugin permissions.
+- **Runtime tool receipts:** successful demo tool results carry ZeroClaw's
+  ephemeral in-memory HMAC receipt and surface it on the CLI channel. This
+  detects model-fabricated dispatch claims inside the active receipt scope; it
+  is not a durable or third-party-verifiable signature.
 
 Read the complete [threat model](./docs/THREAT_MODEL.md) before mainnet use.
+The [standards crosswalk](./docs/STANDARDS.md) maps each interoperability and
+verification claim to the primary ZeroClaw, Solana Pay, Solana RPC, or Circle
+source and to the corresponding ProofPay control.
 
 ## Architecture
 
@@ -103,6 +110,11 @@ that can persist the canonical `demo-atlas-m1` devnet sample. The model can
 also inspect the five built-in SOP control verbs, but general dynamic SOP shell
 steps remain documentation for an operator-managed deployment and are not
 executable through this locked demo profile.
+
+The demo agent enables ZeroClaw's per-agent HMAC tool receipts and surfaces
+them in the CLI response. Receipt keys remain ephemeral and in memory, so the
+receipt is useful evidence against model narration—not an external attestation
+or substitute for the visible approval gate.
 
 ## What gets bound
 

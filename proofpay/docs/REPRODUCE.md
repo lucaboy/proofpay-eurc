@@ -18,6 +18,20 @@ The ZeroClaw v0.8.3 release and its checksums are published at:
 Verify the downloaded archive against the release’s `SHA256SUMS` before use.
 ProofPay does not require a custom ZeroClaw fork.
 
+For stronger supply-chain verification, the official v0.8.3 release also
+publishes GitHub artifact provenance. Run this against the downloaded release
+artifact:
+
+```sh
+gh attestation verify <artifact> \
+  --repo zeroclaw-labs/zeroclaw \
+  --signer-workflow zeroclaw-labs/zeroclaw/.github/workflows/release-stable-manual.yml \
+  --source-digest 24476b71d33eb1672a9495a7ce3d155377a60ce8
+```
+
+This verifies the upstream release artifact; it does not attest this ProofPay
+repository or the local recording.
+
 ## 1. Inspect the trust surface
 
 From the repository root:

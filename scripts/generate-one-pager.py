@@ -62,7 +62,7 @@ def draw():
     width, height = A4
     canvas = Canvas(str(OUTPUT), pagesize=A4)
     canvas.setTitle("ProofPay EURC - ZeroClaw bounty one-pager")
-    canvas.setAuthor("Luca Chianese")
+    canvas.setAuthor("lucaboy")
     canvas.setSubject("Deliverable-bound EURC payment requests for ZeroClaw")
 
     canvas.setFillColor(PAPER)
@@ -207,7 +207,7 @@ def draw():
     metrics = [
         ("32", "automated tests"),
         ("0", "wallet secrets"),
-        ("1", "exact helper path"),
+        ("CLI", "real ZeroClaw channel"),
         ("v2", "evidence schema"),
     ]
     metric_y = metrics_top - 26 * mm
@@ -233,7 +233,8 @@ def draw():
         "environment, single concurrency, and no browser/HTTP/MCP. The template "
         "keeps ZeroClaw's OS sandbox enabled; the documented macOS 0.8.3 local "
         "recording fallback remains fixed-only. The dynamic SOP is "
-        "operator-supervised reference material, not part of the locked surface.",
+        "operator-supervised reference material, not part of the locked surface. "
+        "Ephemeral HMAC receipts make fabricated tool-dispatch claims visible.",
         margin + 6 * mm,
         safety_top - 15 * mm,
         80 * mm,

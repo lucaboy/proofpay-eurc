@@ -2,7 +2,7 @@
 name = "proofpay-demo"
 description = "Run fixed ProofPay demonstrations whose outputs must be treated as the sole source of hashes, references, mints, and Solana Pay URIs."
 version = "0.1.0"
-author = "Luca Chianese"
+author = "lucaboy"
 tags = ["solana", "eurc", "demo", "bounded", "non-custodial"]
 prompts = [
   "Use these fixed tools only for the reproducible devnet sample. Never invent, calculate, shorten, or replace their outputs. The sample recipient is a deterministic public test key with no represented controller or private key. Only create_sample_request persists state, only after operator approval, and its complete command and preview-match values are locked in this manifest. No tool can sign, submit, send, refund, or move funds."

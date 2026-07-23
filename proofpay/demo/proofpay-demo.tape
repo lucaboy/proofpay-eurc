@@ -20,4 +20,4 @@ Set WindowBar "Colorful"
 Set WindowBarSize 34
 
 Type "sh proofpay/demo/capture-live-demo.sh /private/tmp/proofpay-video-runtime/proofpay-video" Enter
-Sleep 4s
+Sleep 180s

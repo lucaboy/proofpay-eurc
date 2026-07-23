@@ -71,6 +71,8 @@ trail.
   claim is valid only when the video visibly contains the parsed calls and
   returned helper JSON.
 - The stock ZeroClaw 0.8.3 binary is used; there is no fork or custom runtime.
+- The recorded interaction uses ZeroClaw's built-in CLI channel, a real channel
+  that the official channel matrix lists as always available.
 - The distributed template keeps the OS sandbox on `auto`; an explicit
   `/private/tmp` no-sandbox flag exists only for a trusted local macOS
   recording affected by the stock 0.8.3 Seatbelt/Node bug and prints a
@@ -112,8 +114,12 @@ script. The agent refuses and performs no tool call or state mutation.
 ## Publication links
 
 - Repository: `https://github.com/lucaboy/proofpay-eurc`
-- Demo video and ZeroClaw Discord `#solana-bounty` showcase: supplied directly
-  in the bounty submission after the source commit is frozen.
+- Demo video:
+  `https://drive.google.com/file/d/1JDNN-wTHlMtd-Qo2NVQQSg-s2mVaY59B/view?usp=sharing`
+- One-pager:
+  `https://drive.google.com/file/d/1TOnDbGysRhAmgfB1SKux9pv5S60IdgtV/view?usp=sharing`
+- ZeroClaw Discord `#solana-bounty` showcase:
+  `https://discord.com/channels/1472154792351760419/1527427886410109029/1529827367919423628`
 
 Do not submit until all three links resolve publicly, the repository commit
 shown in the video matches the submitted source, and the video visibly proves
@@ -163,10 +169,12 @@ it.
       present; `.secrets/`, runtime data, ledgers, and evidence are absent.
 - [ ] CI passes on Node.js 16 and 22.
 - [ ] Video is shorter than three minutes and shows a real ZeroClaw tool call.
-- [ ] Tool-call footage visibly includes the parsed
-      `proofpay-demo__preview_sample` and
-      `proofpay-demo__create_sample_request` calls, the approval gate, and
-      returned helper JSON; it is not model prose or an echoed command.
+- [ ] Footage shows the canonical direct fixed-helper preview followed by the
+      parsed native `proofpay-demo__create_sample_request` call over the CLI
+      channel, the approval gate, and the verified result trace; it is not model
+      prose or an echoed command.
+- [ ] Source, tape, and PDF were committed before capture; the generated MP4 was
+      uploaded externally and not committed.
 - [ ] Video clearly states that no wallet is connected, a local pending request
       is created, and no payment occurs.
 - [ ] Discord showcase is posted in `#solana-bounty`.

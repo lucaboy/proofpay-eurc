@@ -4,6 +4,11 @@ The recording must show one continuous terminal session from a clean checkout.
 Do not display `.secrets/`, wallet software, private addresses, browser
 profiles, API tokens, or the local request ledger.
 
+Freeze and push the source commit before recording. Include this script, the
+VHS tape, and the PDF in that commit; write the generated MP4 only to
+`/private/tmp`, upload it externally, and make no repository changes after
+recording the displayed SHA.
+
 ## 0:00–0:20 — Problem and promise
 
 Show the repository README and say:
@@ -72,20 +77,12 @@ shell.
 The release capture uses the local Ollama model
 `neurons-coordinator-agentic:latest` through an override in this copied
 recording runtime only. Keep the repository template and every risk/tool
-setting unchanged.
+setting unchanged. `zeroclaw agent --message` uses ZeroClaw's built-in CLI
+channel, which its official channel matrix lists as always available.
 
-Start the agent against that isolated config and ask:
-
-```text
-Run the fixed ProofPay devnet preview through the proofpay-demo tool.
-Return the actual tool output; do not calculate or invent any field.
-```
-
-Keep this segment only if the trace visibly shows a parsed tool call to
-`proofpay-demo__preview_sample`, followed by returned helper JSON. Model prose,
-an echoed command, or invented fields do not count; if dispatch is not visible,
-stop and fix the recording rather than claiming success. Once the real call is
-captured, highlight:
+First show the canonical, non-persistent output of the fixed helper preview.
+This establishes the complete request terms without relying on model prose.
+Highlight:
 
 - sample SHA-256
   `4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8`;
@@ -94,13 +91,13 @@ captured, highlight:
 - full reference and Solana Pay URI;
 - `preview` means no local request was persisted.
 
-Keep outbound redaction enabled. Stock ZeroClaw 0.8.3 may replace part of the
-public EURC mint inside the URI with `Hzwq*[REDACTED]` in the captured trace.
-Label that as a capture-layer false positive and show the direct fixed-helper
-preview or manifest beside it for the complete URI; do not disable redaction or
-describe the shortened trace string as a different request.
+With `untrusted_outbound_redact = true`, stock ZeroClaw 0.8.3 may render the
+public mint substring inside `solanaPayUri` as `Hzwq*[REDACTED]` in the captured
+tool result. This is capture-layer redaction only. Keep it enabled and show the
+canonical direct fixed-helper preview immediately before the trace; the
+manifest-locked create still uses the complete URI.
 
-Then ask:
+Then start the agent over the CLI channel and ask:
 
 ```text
 Create the one fixed ProofPay demo request with create_sample_request.
@@ -110,9 +107,12 @@ Keep the explicit approval prompt visible. Compare it with the preview, approve
 once, and retain the parsed
 `proofpay-demo__create_sample_request` call plus returned helper JSON. Highlight
 canonical ID `demo-atlas-m1`, status `pending`, and the same digest, reference,
-and URI. Explain that all command terms and preview-match values are hard-locked
-in the manifest, caller arguments cannot override them, and a second invocation
-fails with `INVOICE_EXISTS`.
+and URI. Keep the `zc-receipt-*` value surfaced by the CLI response visible:
+it is ZeroClaw's ephemeral HMAC proof that the successful tool result came from
+the active runtime, not a persistent third-party signature. Explain that all
+command terms and preview-match values are hard-locked in the manifest, caller
+arguments cannot override them, and a second invocation fails with
+`INVOICE_EXISTS`.
 
 State that the deterministic sample address has no represented controller and
 must not receive assets. Before the trace exists in the finished video, do not

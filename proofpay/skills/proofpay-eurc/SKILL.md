@@ -2,7 +2,7 @@
 name: proofpay-eurc
 description: Create human-approved EURC Solana Pay requests bound to deliverable hashes, reconcile exact on-chain payments, and produce non-custodial evidence packs.
 version: 0.1.0
-author: Luca Chianese
+author: lucaboy
 tags: [solana, solana-pay, eurc, payments, evidence, non-custodial]
 ---
 

@@ -16,6 +16,8 @@ This repository is a submission for the
 - four fixed demo tools prepared for a reproducible ZeroClaw tool-dispatch
   recording: three read-only/non-persistent tools plus one operator-approved,
   persistent devnet sample request;
+- ephemeral HMAC tool receipts surfaced by the CLI channel so a narrated call
+  without a successful runtime dispatch is visibly receipt-less;
 - a dependency-free Node.js 16 helper for preview-bound creation, single-writer
   request storage, read-only reconciliation, and exclusive no-overwrite
   evidence bundles;
@@ -28,7 +30,7 @@ This repository is a submission for the
 - an offline suite covering the ProofPay core and the Superteam Agent API
   client;
 - a threat model, clean-room reproduction guide, prompt-injection transcript,
-  short video script, and submission copy.
+  standards crosswalk, short video script, and submission copy.
 
 Start with [proofpay/README.md](./proofpay/README.md), then read the
 [threat model](./proofpay/docs/THREAT_MODEL.md).
@@ -59,12 +61,17 @@ For ZeroClaw installation, SOP validation, and a model-driven demo, follow
 The supported ZeroClaw setup uses
 `proofpay/demo/prepare-zeroclaw-demo.sh`: it creates a dedicated runtime
 workspace and copies both the policy skill and fixed demo-tool skill. A live
-tool call is proven by the final submission video and its visible ZeroClaw
-trace; repository code alone is not evidence of model dispatch.
+tool call is proven over ZeroClaw's built-in CLI channel by the final submission
+video and its visible ZeroClaw trace; repository code alone is not evidence of
+model dispatch. ZeroClaw's official channel matrix lists `cli` as an
+always-available channel with no external dependency.
 The locked demo profile exposes no raw shell. On macOS, the preparation guide
 documents a clearly marked `/private/tmp` local-recording fallback for a stock
 ZeroClaw 0.8.3 Seatbelt/Node incompatibility; the distributed template keeps
 the OS sandbox enabled in `auto` mode.
+
+The implementation-to-specification mapping is documented in
+[`proofpay/docs/STANDARDS.md`](./proofpay/docs/STANDARDS.md).
 
 ## Superteam Agent API monitor
 

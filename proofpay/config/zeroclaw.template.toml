@@ -28,6 +28,14 @@ format = "openclaw"
 unrestricted_filesystem = false
 read_memory_from = []
 
+[agents.proofpay.tool_receipts]
+# Successful native tool results receive an ephemeral in-memory HMAC receipt.
+# Surface it on the CLI channel to make fabricated dispatch claims obvious.
+# Receipts are not durable third-party signatures and do not replace approval.
+enabled = true
+inject_system_prompt = true
+show_in_response = true
+
 [providers.models.openai.proofpay]
 model = "gpt-5.4"
 wire_api = "responses"
