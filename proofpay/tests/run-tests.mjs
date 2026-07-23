@@ -261,7 +261,7 @@ test("deliverable hashing rejects traversal, absolute paths, and symlink escape"
   }
 });
 
-test("happy path verifies finalized exact EURC delta and writes evidence mode 600", async () => {
+test("happy path accepts the System Program, verifies exact EURC, and writes evidence mode 600", async () => {
   const env = await setup();
   const invoice = await createApproved(input(), {
     ...env,
@@ -895,6 +895,12 @@ test("malicious invoice and URI inputs are rejected, not interpolated", async ()
   }
   await expectCode("INVALID_PUBLIC_KEY", () =>
     previewInvoice(input({ recipient: "javascript:alert(1)" }), env),
+  );
+  await expectCode("INVALID_PUBLIC_KEY", () =>
+    previewInvoice(
+      input({ recipient: "11111111111111111111111111111111" }),
+      env,
+    ),
   );
   await expectCode("INVALID_NETWORK", () =>
     previewInvoice(input({ network: "https://evil.example" }), env),

@@ -104,7 +104,7 @@ fresh authorization.
 
 In the supplied locked demo profile, dynamic request terms are unavailable.
 Use only its fixed `preview_sample` and always-ask `create_sample_request`
-wrappers for canonical invoice `demo-atlas-m1`; after an independent payer
+wrappers for canonical invoice `demo-atlas-m2`; after an independent payer
 transaction, use its fixed `check_sample_payment` and
 `write_sample_evidence` wrappers. The general dynamic workflow below is for a
 separately reviewed operator-managed profile and must not be represented as

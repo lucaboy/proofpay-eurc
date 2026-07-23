@@ -19,5 +19,5 @@ Set Theme "Catppuccin Mocha"
 Set WindowBar "Colorful"
 Set WindowBarSize 34
 
-Type "sh proofpay/demo/capture-live-demo.sh /private/tmp/proofpay-video-runtime/proofpay-video" Enter
+Type "env PATH=\"$PROOFPAY_NODE_BIN_DIR:$PATH\" PROOFPAY_DEVNET_PAYER_SCRIPT=\"$PROOFPAY_DEVNET_PAYER_SCRIPT\" PROOFPAY_ZEROCLAW_BIN=\"$PROOFPAY_ZEROCLAW_BIN\" sh proofpay/demo/capture-live-demo.sh \"$PROOFPAY_VIDEO_RUNTIME\"" Enter
 Sleep 180s

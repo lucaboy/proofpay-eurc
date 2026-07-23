@@ -16,8 +16,9 @@ This repository is a submission for the
 - six fixed demo tools prepared for a reproducible ZeroClaw tool-dispatch
   recording: three non-mutating views, one operator-approved idempotent request
   writer, one fixed reconciler, and one exclusive evidence writer;
-- a sanitized ZeroClaw runtime trace that independently requires both a parsed
-  native tool call and its returned helper JSON before a dispatch claim passes;
+- a sanitized ZeroClaw runtime-trace verifier/summarizer that independently
+  requires both a parsed native tool call and its returned helper JSON before a
+  dispatch claim passes;
 - a dependency-free Node.js 16 helper for preview-bound creation, single-writer
   request storage, read-only-chain reconciliation with a verified local paid
   checkpoint, and exclusive no-overwrite
@@ -48,9 +49,9 @@ Start with [proofpay/README.md](./proofpay/README.md), then read the
 npm test
 
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
-  --amount 12.50 \
+  --amount 5.00 \
   --network devnet \
   --deliverable sample-milestone.txt
 ```

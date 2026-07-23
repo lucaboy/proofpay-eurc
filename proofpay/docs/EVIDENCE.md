@@ -73,17 +73,17 @@ than order. A v3 pack has this logical shape:
     "recordedAt": "2026-07-23T11:55:00.000Z"
   },
   "invoice": {
-    "id": "demo-atlas-m1",
+    "id": "demo-atlas-m2",
     "network": "devnet",
     "currency": "EURC",
     "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
     "recipient": "<full Solana address>",
-    "amount": "12.5",
-    "amountAtomic": "12500000",
+    "amount": "5",
+    "amountAtomic": "5000000",
     "validForSeconds": 604800,
     "expiresAt": "2026-07-30T11:55:00.000Z",
     "reference": "<unique full Solana reference>",
-    "memo": "PROOFPAY:demo-atlas-m1:<first-16-sha256>",
+    "memo": "PROOFPAY:demo-atlas-m2:<first-16-sha256>",
     "solanaPayUri": "<full Solana Pay URI>"
   },
   "deliverable": {
@@ -95,8 +95,8 @@ than order. A v3 pack has this logical shape:
     "signature": "<full Solana transaction signature>",
     "slot": 123456,
     "blockTime": 1784808000,
-    "confirmedAtomic": "12500000",
-    "confirmedAmount": "12.5",
+    "confirmedAtomic": "5000000",
+    "confirmedAmount": "5",
     "confirmationStatus": "finalized",
     "verifiedAt": "2026-07-23T11:59:00.000Z",
     "rpcUrl": "https://api.devnet.solana.com"
@@ -145,6 +145,11 @@ transaction memo, or a runtime prompt.
 The transaction must be observed at `finalized` commitment and its metadata
 must report `err: null`. A processed, confirmed, dropped, failed, or unavailable
 transaction is not payment evidence.
+
+Solana's native System Program uses the canonical all-zero 32-byte account key
+`11111111111111111111111111111111`. ProofPay accepts that value only while
+decoding the immutable account-key list of an already-finalized transaction.
+Operator-controlled recipient, mint, and reference terms continue to reject it.
 
 ### Time consistency and replay window
 
@@ -248,15 +253,15 @@ From the repository root:
 
 ```sh
 ./proofpay/tools/proofpay.mjs check \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --compact --json
 ./proofpay/tools/proofpay.mjs evidence \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --compact --json
 ```
 
 The first successful `evidence` call creates
-`proofpay/evidence/demo-atlas-m1.evidence/` atomically under a per-invoice lock.
+`proofpay/evidence/demo-atlas-m2.evidence/` atomically under a per-invoice lock.
 The JSON and Markdown files are created exclusively. A later call for the same
 invoice fails with `EVIDENCE_EXISTS`; it does not replace, merge, or silently
 regenerate the bundle. This is application-level exclusive no-overwrite
@@ -268,7 +273,7 @@ writer’s ledger:
 
 ```sh
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt
 ```
 
@@ -281,7 +286,7 @@ To independently repeat the live reference lookup and every payment check:
 
 ```sh
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt \
   --online
 ```

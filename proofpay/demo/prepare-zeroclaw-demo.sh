@@ -178,9 +178,9 @@ fi
   ./proofpay/tools/proofpay.mjs hash \
     --deliverable sample-milestone.txt >/dev/null
   ./proofpay/tools/proofpay.mjs preview \
-    --invoice demo-atlas-m1 \
+    --invoice demo-atlas-m2 \
     --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
-    --amount 12.50 \
+    --amount 5.00 \
     --network devnet \
     --deliverable sample-milestone.txt >/dev/null
   ./proofpay/tools/proofpay.mjs list --compact --json >/dev/null

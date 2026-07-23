@@ -1,9 +1,10 @@
 # ProofPay EURC
 
-ProofPay is a ZeroClaw 0.8.3 skill-only workflow for freelancers and studios:
-bind an exact deliverable revision to an EURC Solana Pay request, let the client
-sign in their own wallet, then reconcile the finalized transfer into a
-reproducible evidence pack.
+ProofPay is a ZeroClaw 0.8.3 skill integration—without a runtime fork or wallet
+plugin—backed by a narrow local helper. It lets freelancers and studios bind an
+exact deliverable revision to an EURC Solana Pay request, let the client sign in
+their own wallet, then reconcile the finalized transfer into a reproducible
+evidence pack.
 
 The agent has no wallet. It never holds a seed phrase or private key, never
 signs or submits a transaction, and has no send/refund command.
@@ -250,9 +251,9 @@ Preview the same request without persistence:
 
 ```sh
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --recipient "${PROOFPAY_RECIPIENT}" \
-  --amount 12.50 \
+  --amount 5.00 \
   --network devnet \
   --deliverable sample-milestone.txt
 ```
@@ -266,9 +267,9 @@ APPROVED_REFERENCE="<preview.approval.reference>"
 APPROVED_URI="<preview.approval.solanaPayUri>"
 
 ./proofpay/tools/proofpay.mjs create \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --recipient "${PROOFPAY_RECIPIENT}" \
-  --amount 12.50 \
+  --amount 5.00 \
   --network devnet \
   --deliverable sample-milestone.txt \
   --approve-digest "${APPROVED_DIGEST}" \
@@ -304,20 +305,20 @@ Examples:
 ./proofpay/tools/proofpay.mjs list --compact --json
 
 ./proofpay/tools/proofpay.mjs check \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --compact --json
 
 ./proofpay/tools/proofpay.mjs evidence \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --compact
 
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt
 
 # Re-run the same canonical checks against the allowlisted Solana RPC.
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt \
   --online
 ```

@@ -78,7 +78,7 @@ attribution remains in the separate operator/SOP audit trail.
 - The locked demo profile exposes no raw shell. Six fixed wrappers provide
   hash, preview, compact list, always-ask idempotent creation, fixed
   reconciliation, and exclusive evidence writing for the hard-locked canonical
-  `demo-atlas-m1` devnet request.
+  `demo-atlas-m2` devnet request.
 - The general SOP shell steps remain reference documentation for an
   operator-managed profile; starting an SOP cannot make raw shell dispatchable
   in this locked demo.
@@ -140,13 +140,10 @@ mode authenticates the evidence producer.
 
 ## Publication links
 
-- Repository: `https://github.com/lucaboy/proofpay-eurc`
-- Demo video:
-  `https://drive.google.com/file/d/1JDNN-wTHlMtd-Qo2NVQQSg-s2mVaY59B/view?usp=sharing`
-- One-pager:
-  `https://drive.google.com/file/d/1TOnDbGysRhAmgfB1SKux9pv5S60IdgtV/view?usp=sharing`
-- ZeroClaw Discord `#solana-bounty` showcase:
-  `https://discord.com/channels/1472154792351760419/1527427886410109029/1529827367919423628`
+- [Repository](https://github.com/lucaboy/proofpay-eurc)
+- [Demo video](https://drive.google.com/file/d/1JDNN-wTHlMtd-Qo2NVQQSg-s2mVaY59B/view?usp=sharing)
+- [One-pager](https://drive.google.com/file/d/1TOnDbGysRhAmgfB1SKux9pv5S60IdgtV/view?usp=sharing)
+- [ZeroClaw Discord `#solana-bounty` showcase](https://discord.com/channels/1472154792351760419/1527427886410109029/1529827367919423628)
 
 Do not submit until all four links resolve publicly, the repository commit
 shown in the video matches the submitted source, and the video visibly proves
@@ -173,9 +170,9 @@ already completed a tool call.
 npm test
 
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
-  --amount 12.50 \
+  --amount 5.00 \
   --network devnet \
   --deliverable sample-milestone.txt
 ```
@@ -190,28 +187,26 @@ The preview is non-persistent. The sample address is a deterministic public
 devnet test key with no private key in this repository. Use it only for the
 documented valueless devnet demonstration; never send mainnet assets.
 
-## Final pre-submit checklist
+## Operator release gate
 
-- [ ] Public repository link works in a private browser window.
-- [ ] License, README, source, tests, config, SOPs, skills, and sample are
-      present; `.secrets/`, runtime data, ledgers, and evidence are absent.
-- [ ] CI passes on Node.js 16 and 22.
-- [ ] Main-branch submission bundle has a downloadable checksum and GitHub
-      provenance attestation as described in `SUPPLY_CHAIN.md`.
-- [ ] Video is shorter than three minutes and shows a real ZeroClaw tool call.
-- [ ] Footage shows the canonical direct fixed-helper preview followed by the
-      parsed native `proofpay-demo__create_sample_request` call over the CLI
-      channel, the approval gate, `check_sample_payment`,
-      `write_sample_evidence`, and their verified result traces; it is not model
-      prose or an echoed command.
-- [ ] Source, tape, and PDF were committed before capture; the generated MP4 was
-      uploaded externally and not committed.
-- [ ] Video clearly states that the agent has no wallet, an independent payer
-      signs the devnet transaction, and the agent follows the request from
-      `pending` to `paid` to evidence.
-- [ ] The finalized devnet explorer URL is public, and both offline and
-      `--online` evidence verification pass for the displayed signature.
-- [ ] Discord showcase is posted in `#solana-bounty`.
-- [ ] Superteam submission uses the final repository, video, and Discord links.
-- [ ] No seed phrase, private key, API key, claim code, PII, or controlled
-      production recipient appears anywhere.
+Before submission, verify that:
+
+- the public repository resolves in a private browser window;
+- license, README, source, tests, config, SOPs, skills, and sample are present,
+  while `.secrets/`, runtime data, ledgers, and evidence are absent;
+- CI passes on Node.js 16 and 22;
+- the main-branch bundle has a downloadable checksum and GitHub provenance
+  attestation as described in `SUPPLY_CHAIN.md`;
+- the video is shorter than three minutes and visibly contains the direct
+  fixed-helper preview, native `proofpay-demo__create_sample_request` dispatch
+  over the CLI channel, approval gate, `check_sample_payment`,
+  `write_sample_evidence`, and verified result traces;
+- source and PDF are frozen before capture, while the generated MP4 remains
+  external to Git;
+- the independent payer and walletless-agent boundary is stated explicitly;
+- the public finalized devnet explorer URL matches evidence that passes both
+  offline and `--online` verification;
+- the final Discord showcase and Superteam submission point to the same
+  repository, commit, video, one-pager, and transaction; and
+- no seed phrase, private key, API key, claim code, PII, or controlled
+  production recipient appears in any published artifact.

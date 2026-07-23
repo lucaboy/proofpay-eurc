@@ -1,8 +1,9 @@
 # Reproduce ProofPay EURC on ZeroClaw 0.8.3
 
-These steps reproduce the skill-only integration from a clean checkout. The
-agent does not require or create a wallet and cannot move funds. The complete
-demonstration uses a separate devnet payer for the external payment leg.
+These steps reproduce the skill integration and narrow local helper from a
+clean checkout, without a ZeroClaw runtime fork or wallet plugin. The agent does
+not require or create a wallet and cannot move funds. The complete demonstration
+uses a separate devnet payer for the external payment leg.
 
 ## Prerequisites
 
@@ -216,9 +217,9 @@ To preview without persistence:
 
 ```sh
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m1 \
+  --invoice demo-atlas-m2 \
   --recipient "${PROOFPAY_RECIPIENT}" \
-  --amount 12.50 \
+  --amount 5.00 \
   --network devnet \
   --deliverable sample-milestone.txt
 ```
@@ -251,7 +252,7 @@ Create the one fixed ProofPay demo request with create_sample_request.
 ZeroClaw must stop at an explicit approval prompt for
 `proofpay-demo__create_sample_request`. Approve only after comparing it with
 the fixed preview. The trace must then show the parsed wrapper call and helper
-JSON with canonical ID `demo-atlas-m1` and status `pending`. Its command,
+JSON with canonical ID `demo-atlas-m2` and status `pending`. Its command,
 digest, reference, and complete URI are hard-locked in `SKILL.toml`; caller
 arguments cannot override them. A second approved invocation cannot overwrite
 the request: an exact retry returns the existing request with
@@ -303,11 +304,11 @@ Independently validate the pack:
 
 ```sh
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt
 
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt \
   --online
 ```

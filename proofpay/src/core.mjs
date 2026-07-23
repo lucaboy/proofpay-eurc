@@ -52,6 +52,7 @@ const SPL_TOKEN_PROGRAM_ID =
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const ASSOCIATED_TOKEN_PROGRAM_ID =
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
 const STORE_SCHEMA_VERSION = 1;
 const INVOICE_SCHEMA_VERSION = 3;
 const EURC_DECIMALS = 6;
@@ -197,6 +198,17 @@ export function assertSolanaPublicKey(value, field = "public key") {
     fail("INVALID_PUBLIC_KEY", `${field} cannot be the all-zero key`);
   }
   return value;
+}
+
+function assertTransactionAccountKey(value, field) {
+  // Solana's native System Program deliberately uses the all-zero 32-byte
+  // address. Keep rejecting that value for operator-controlled invoice terms,
+  // while accepting it only when decoding the immutable account-key list of an
+  // already finalized transaction.
+  if (value === SYSTEM_PROGRAM_ID) {
+    return value;
+  }
+  return assertSolanaPublicKey(value, field);
 }
 
 const ED25519_FIELD = (1n << 255n) - 19n;
@@ -1450,7 +1462,7 @@ function resolveAccountKeys(transaction) {
   }
 
   const normalizedStatic = staticKeys.map((key) =>
-    assertSolanaPublicKey(key, "transaction account key"),
+    assertTransactionAccountKey(key, "transaction account key"),
   );
   const loadedAddresses = transaction?.meta?.loadedAddresses;
   const loadedWritable = loadedAddresses?.writable ?? [];
@@ -1459,10 +1471,10 @@ function resolveAccountKeys(transaction) {
     fail("INVALID_LOADED_ADDRESSES", "Loaded transaction addresses are invalid");
   }
   const normalizedLoadedWritable = loadedWritable.map((key) =>
-    assertSolanaPublicKey(key, "loaded writable account key"),
+    assertTransactionAccountKey(key, "loaded writable account key"),
   );
   const normalizedLoadedReadonly = loadedReadonly.map((key) =>
-    assertSolanaPublicKey(key, "loaded readonly account key"),
+    assertTransactionAccountKey(key, "loaded readonly account key"),
   );
 
   const writableSigned =

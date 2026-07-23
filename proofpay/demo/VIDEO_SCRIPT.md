@@ -6,6 +6,12 @@ token, `.secrets` file, or raw ledger contents. The external payer script may
 print only public addresses, balances, the finalized signature, and the
 explorer URL.
 
+When using `proofpay-demo.tape`, export `PROOFPAY_VIDEO_RUNTIME`,
+`PROOFPAY_DEVNET_PAYER_SCRIPT`, `PROOFPAY_ZEROCLAW_BIN`, and the directory
+containing the payer-compatible Node binary as `PROOFPAY_NODE_BIN_DIR`. The
+tape forwards those values explicitly and the capture script fails before any
+payment if the runtime is not fresh or the payer path is absent or unsafe.
+
 ## 0:00-0:20 - Problem and promise
 
 > Payment links identify an amount and recipient, but usually lose the exact
@@ -41,13 +47,13 @@ and offline-versus-online verification scope.
 
 Show the fixed preview and highlight:
 
-- `demo-atlas-m1`, devnet, 12.5 EURC;
+- `demo-atlas-m2`, devnet, 5 EURC;
 - Circle-listed EURC mint;
 - 604800-second payment window;
 - deliverable SHA-256
   `4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8`;
 - reference
-  `BYX5MWZexvGk9ZpD2bY1eRtD4Tkmc4CgbJVrGK1TT87X`;
+  `6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y`;
 - canonical Solana Pay URI;
 - preview is non-persistent.
 
@@ -70,7 +76,7 @@ absolute preview timestamp.
 ## 1:35-2:05 - Independent payer and agent reconciliation
 
 Run the private `/private/tmp` payer script outside ZeroClaw. It sends exactly
-12.5 faucet EURC on Solana devnet and prints the finalized signature plus
+5 faucet EURC on Solana devnet and prints the finalized signature plus
 explorer URL. State:
 
 > The payer signed independently. Its key never entered the repository,
@@ -92,7 +98,7 @@ Then run:
 
 ```sh
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt \
   --online
 ```

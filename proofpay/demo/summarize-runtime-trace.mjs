@@ -63,7 +63,7 @@ console.log("dispatch=manifest-locked fixed wrapper");
 
 if (expectedTool === "proofpay-demo__create_sample_request") {
   if (
-    result?.id !== "demo-atlas-m1" ||
+    result?.id !== "demo-atlas-m2" ||
     result?.status !== "pending" ||
     result?.payment !== null
   ) {
@@ -77,7 +77,7 @@ if (expectedTool === "proofpay-demo__create_sample_request") {
   console.log("payment=null (agent has no wallet or signing capability)");
 } else if (expectedTool === "proofpay-demo__check_sample_payment") {
   if (
-    result?.invoiceId !== "demo-atlas-m1" ||
+    result?.invoiceId !== "demo-atlas-m2" ||
     result?.status !== "paid" ||
     typeof result?.signature !== "string" ||
     result.signature.length < 80 ||
@@ -93,7 +93,7 @@ if (expectedTool === "proofpay-demo__create_sample_request") {
   console.log(`confirmationStatus=${result.confirmationStatus}`);
 } else if (expectedTool === "proofpay-demo__write_sample_evidence") {
   if (
-    result?.invoiceId !== "demo-atlas-m1" ||
+    result?.invoiceId !== "demo-atlas-m2" ||
     result?.status !== "evidence-written" ||
     result?.schemaVersion !== 3 ||
     typeof result?.paymentSignature !== "string" ||

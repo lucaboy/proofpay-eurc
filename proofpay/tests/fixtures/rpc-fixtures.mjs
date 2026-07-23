@@ -14,6 +14,7 @@ const AUTHORITY = base58Encode(Buffer.alloc(32, 12));
 const MEMO_PROGRAM_ID = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 const SPL_TOKEN_PROGRAM_ID =
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
 
 function transferCheckedData(amount) {
   const data = Buffer.alloc(10);
@@ -79,6 +80,7 @@ export function rpcFixture(
         mint,
         MEMO_PROGRAM_ID,
         SPL_TOKEN_PROGRAM_ID,
+        SYSTEM_PROGRAM_ID,
         ...(duplicateReference ? [reference] : []),
       ];
       const memoInstruction = {
@@ -108,7 +110,7 @@ export function rpcFixture(
             header: {
               numRequiredSignatures: 1,
               numReadonlySignedAccounts: 0,
-              numReadonlyUnsignedAccounts: 4 + (duplicateReference ? 1 : 0),
+              numReadonlyUnsignedAccounts: 5 + (duplicateReference ? 1 : 0),
             },
             accountKeys,
             recentBlockhash: base58Encode(Buffer.alloc(32, 13)),

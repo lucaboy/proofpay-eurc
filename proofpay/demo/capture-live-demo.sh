@@ -46,6 +46,11 @@ if [ ! -f "${PAYER_SCRIPT}" ] || [ -L "${PAYER_SCRIPT}" ]; then
   echo "External devnet payer script is missing or unsafe: ${PAYER_SCRIPT}" >&2
   exit 2
 fi
+if ! git -C "${REPO_ROOT}" diff --quiet ||
+   ! git -C "${REPO_ROOT}" diff --cached --quiet; then
+  echo "Refusing to record from a dirty source tree; commit the exact source first." >&2
+  exit 2
+fi
 
 TEST_LOG=$(mktemp /private/tmp/proofpay-tests.XXXXXX)
 trap 'rm -f "${TEST_LOG}"' EXIT HUP INT TERM
@@ -66,15 +71,29 @@ printf '\n'
 
 printf '%s\n' "2) LOCKED ZEROCLAW SKILL SURFACE"
 "${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" skills list --agent proofpay
+printf 'manifest_locked_tools=%s\n' \
+  "$(grep -c '^locked_args = ' "${CONFIG_DIR}/shared/skills/proofpay/proofpay-demo-tools/SKILL.toml")"
+printf 'always_ask='
+"${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" \
+  config get risk_profiles.proofpay.always_ask
+printf 'allowed_commands='
+"${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" \
+  config get risk_profiles.proofpay.allowed_commands
+printf 'mcp='
+"${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" config get mcp.enabled
+printf ' browser='
+"${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" config get browser.enabled
+printf ' http='
+"${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" config get http_request.enabled
 printf '%s\n\n' "Raw shell, wallet, browser, HTTP, and signing tools are not exposed."
 
 printf '%s\n' "3) DIRECT FIXED-HELPER PREVIEW (CANONICAL, NON-PERSISTENT)"
 (
   cd "${WORKSPACE_DIR}"
   ./proofpay/tools/proofpay.mjs preview \
-    --invoice demo-atlas-m1 \
+    --invoice demo-atlas-m2 \
     --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
-    --amount 12.50 \
+    --amount 5.00 \
     --network devnet \
     --deliverable sample-milestone.txt
 ) | grep -E '"(status|id|network|currency|mint|amount|reference|sha256|solanaPayUri)"'
@@ -84,7 +103,7 @@ printf '%s\n\n' \
 printf '%s\n' "4) ZEROCLAW MODEL CALL + EXPLICIT APPROVAL CHECKPOINT"
 export PROOFPAY_VIDEO_ZEROCLAW="${ZEROCLAW_BIN}"
 export PROOFPAY_VIDEO_CONFIG="${CONFIG_DIR}"
-export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__create_sample_request exactly once to persist the fixed demo-atlas-m1 devnet request. Do not call any other tool. After the actual tool result, reply in one line with the request id, status, and that no funds moved."
+export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__create_sample_request exactly once to persist the fixed demo-atlas-m2 devnet request. Do not call any other tool. After the actual tool result, reply in one line with the request id, status, and that no funds moved."
 
 /usr/bin/expect <<'EXPECT_EOF'
 set timeout 300
@@ -129,7 +148,7 @@ node "${SCRIPT_DIR}/summarize-runtime-trace.mjs" \
   "proofpay-demo__check_sample_payment"
 
 printf '\n%s\n' "8) ZEROCLAW WRITES IMMUTABLE EVIDENCE"
-export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__write_sample_evidence exactly once for demo-atlas-m1. Do not call any other tool. After the actual tool result, reply in one line with the evidence schema and path."
+export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__write_sample_evidence exactly once for demo-atlas-m2. Do not call any other tool. After the actual tool result, reply in one line with the evidence schema and path."
 NO_COLOR=1 "${ZEROCLAW_BIN}" \
   --config-dir "${CONFIG_DIR}" \
   agent --agent proofpay --log-level info \
@@ -142,12 +161,20 @@ printf '\n%s\n' "9) INDEPENDENT ONLINE EVIDENCE VERIFICATION"
 (
   cd "${WORKSPACE_DIR}"
   ./proofpay/tools/proofpay.mjs verify-evidence \
-    --evidence proofpay/evidence/demo-atlas-m1.evidence/evidence.json \
+    --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
     --deliverable proofpay/deliverables/sample-milestone.txt \
     --online
 ) | grep -E '"(ok|verification|invoiceId|paymentSignature|onChainLookupPerformed|onChainPayment)"'
 
+FINAL_EVIDENCE="${WORKSPACE_DIR}/proofpay/evidence/demo-atlas-m2.evidence/evidence.json"
+FINAL_SIGNATURE=$(node -e \
+  'const fs=require("fs");const value=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(value.payment.signature);' \
+  "${FINAL_EVIDENCE}")
+FINAL_COMMIT=$(git -C "${REPO_ROOT}" rev-parse HEAD)
+
 printf '\n%s\n' \
   "RESULT: pending → finalized paid → schema-v3 evidence, through stock ZeroClaw." \
   "The agent never received a key and cannot sign, submit, transfer, or refund." \
-  "https://github.com/lucaboy/proofpay-eurc"
+  "explorer=https://explorer.solana.com/tx/${FINAL_SIGNATURE}?cluster=devnet" \
+  "source_commit=${FINAL_COMMIT}" \
+  "repo=https://github.com/lucaboy/proofpay-eurc"
