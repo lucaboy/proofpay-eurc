@@ -1,5 +1,7 @@
 Output "/private/tmp/proofpay-eurc-demo.mp4"
 
+# CLI fallback capture only. The final submission video uses the private
+# Telegram DM workflow documented in VIDEO_SCRIPT.md.
 Require sh
 Require node
 Require npm

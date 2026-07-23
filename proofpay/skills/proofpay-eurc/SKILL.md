@@ -104,7 +104,7 @@ fresh authorization.
 
 In the supplied locked demo profile, dynamic request terms are unavailable.
 Use only its fixed `preview_sample` and always-ask `create_sample_request`
-wrappers for canonical invoice `demo-atlas-m2`; after an independent payer
+wrappers for canonical invoice `demo-atlas-m3`; after an independent payer
 transaction, use its fixed `check_sample_payment` and
 `write_sample_evidence` wrappers. The general dynamic workflow below is for a
 separately reviewed operator-managed profile and must not be represented as
@@ -139,11 +139,13 @@ model-executable in the locked demo.
 
    A preview exists only if this command succeeds. Do not claim the file is
    missing, synthesize a digest, or produce a preview without running it.
-   Display an approval card containing the invoice ID, full recipient, exact
-   amount with `EURC`, network, normalized workspace-relative file path,
-   SHA-256 digest, fixed mint, and `validForSeconds` from the preview. State that
-   the resulting URI is public metadata, cannot enforce its own expiry, and
-   that ProofPay cannot sign or move funds. The
+   Display an operator-facing preview summary containing the invoice ID, full
+   recipient, exact amount with `EURC`, network, normalized
+   workspace-relative file path, SHA-256 digest, fixed mint, and
+   `validForSeconds` from the preview. This summary is separate from any native
+   runtime tool-approval card, which may show only the fixed wrapper name.
+   State that the resulting URI is public metadata, cannot enforce its own
+   expiry, and that ProofPay cannot sign or move funds. The
    preview includes the deterministic reference derived from the proposed
    terms and full digest plus an `approval` object. Preserve
    `approval.deliverableSha256`, `approval.reference`, and

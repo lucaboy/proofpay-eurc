@@ -73,7 +73,7 @@ than order. A v3 pack has this logical shape:
     "recordedAt": "2026-07-23T11:55:00.000Z"
   },
   "invoice": {
-    "id": "demo-atlas-m2",
+    "id": "demo-atlas-m3",
     "network": "devnet",
     "currency": "EURC",
     "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
@@ -83,7 +83,7 @@ than order. A v3 pack has this logical shape:
     "validForSeconds": 604800,
     "expiresAt": "2026-07-30T11:55:00.000Z",
     "reference": "<unique full Solana reference>",
-    "memo": "PROOFPAY:demo-atlas-m2:<first-16-sha256>",
+    "memo": "PROOFPAY:demo-atlas-m3:<first-16-sha256>",
     "solanaPayUri": "<full Solana Pay URI>"
   },
   "deliverable": {
@@ -258,15 +258,15 @@ From the repository root:
 
 ```sh
 ./proofpay/tools/proofpay.mjs check \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --compact --json
 ./proofpay/tools/proofpay.mjs evidence \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --compact --json
 ```
 
 The first successful `evidence` call creates
-`proofpay/evidence/demo-atlas-m2.evidence/` atomically under a per-invoice lock.
+`proofpay/evidence/demo-atlas-m3.evidence/` atomically under a per-invoice lock.
 The JSON and Markdown files are created exclusively. A later call for the same
 invoice fails with `EVIDENCE_EXISTS`; it does not replace, merge, or silently
 regenerate the bundle. This is application-level exclusive no-overwrite
@@ -278,7 +278,7 @@ writer’s ledger:
 
 ```sh
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m3.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt
 ```
 
@@ -291,7 +291,7 @@ To independently repeat the live reference lookup and every payment check:
 
 ```sh
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m3.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt \
   --online
 ```

@@ -178,7 +178,7 @@ fi
   ./proofpay/tools/proofpay.mjs hash \
     --deliverable sample-milestone.txt >/dev/null
   ./proofpay/tools/proofpay.mjs preview \
-    --invoice demo-atlas-m2 \
+    --invoice demo-atlas-m3 \
     --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
     --amount 5.00 \
     --network devnet \
@@ -238,6 +238,15 @@ if [ -n "${ZEROCLAW_BIN}" ]; then
     "runtime_profiles.proofpay.parallel_tools=false" \
     "scheduler.max_concurrent=1" \
     "channels.max_concurrent_per_channel=1" \
+    "channels.session_persistence=false" \
+    "channels.telegram.proofpay.enabled=false" \
+    "channels.telegram.proofpay.api_base_url=https://api.telegram.org" \
+    "channels.telegram.proofpay.mention_only=true" \
+    "channels.telegram.proofpay.ack_reactions=false" \
+    "channels.telegram.proofpay.approval_timeout_secs=120" \
+    "peer_groups.telegram_proofpay.channel=telegram.proofpay" \
+    "peer_groups.telegram_proofpay.admin_for_agent_scope=false" \
+    "peer_groups.telegram_proofpay.output_modality=text" \
     "sop.max_concurrent_total=1" \
     "mcp.enabled=false" \
     "browser.enabled=false" \
@@ -258,6 +267,27 @@ if [ -n "${ZEROCLAW_BIN}" ]; then
       exit 2
     fi
   done
+
+  AGENT_CHANNELS=$("${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" \
+    config get agents.proofpay.channels)
+  if [ "${AGENT_CHANNELS}" != '["telegram.proofpay"]' ]; then
+    echo "Unexpected ProofPay channel binding: ${AGENT_CHANNELS}" >&2
+    exit 2
+  fi
+
+  TELEGRAM_AGENTS=$("${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" \
+    config get peer_groups.telegram_proofpay.agents)
+  if [ "${TELEGRAM_AGENTS}" != '["proofpay"]' ]; then
+    echo "Unexpected Telegram peer-group agents: ${TELEGRAM_AGENTS}" >&2
+    exit 2
+  fi
+
+  TELEGRAM_PEERS=$("${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" \
+    config get peer_groups.telegram_proofpay.external_peers)
+  if [ "${TELEGRAM_PEERS}" != '[]' ]; then
+    echo "Fresh Telegram runtime must deny all peers before pairing." >&2
+    exit 2
+  fi
 
   SKILLS_OUTPUT=$("${ZEROCLAW_BIN}" --config-dir "${CONFIG_DIR}" \
     skills list --agent proofpay)
@@ -315,3 +345,7 @@ echo "  SOPs:      ${SOPS_DIR}"
 echo "  skills:    ${BUNDLE_DIR}"
 echo
 echo "No repository directory, .secrets directory, wallet, or credential was copied."
+echo "Optional private-DM demo (authenticate only this temporary runtime first):"
+echo "  ${ZEROCLAW_BIN:-zeroclaw} --config-dir ${CONFIG_DIR} auth login --model-provider openai-codex"
+echo "Then disable group joins in BotFather; the token is entered masked and encrypted:"
+echo "  proofpay/demo/configure-telegram-demo.sh ${CONFIG_DIR}"

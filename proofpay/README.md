@@ -69,10 +69,11 @@ be legal acceptance or identity proof.
   hash commitment enter the memo—never names, emails, paths, or contract text.
 - **Skill-only package:** `manifest.toml` declares only `skill`, no WASM, and
   zero plugin permissions.
-- **Runtime dispatch evidence:** the sanitized ZeroClaw trace must contain both
-  a parsed native tool call and the actual returned fixed-helper JSON. This
-  rejects prose-only claims, while making no receipt, signature, or human
-  attribution claim for the stock v0.8.3 direct CLI path.
+- **Runtime dispatch evidence:** the sanitized ZeroClaw trace must contain an
+  ordered parsed native call → matching tool start → successful fixed-helper
+  result chain in one trace and iteration. This rejects prose-only or
+  misordered claims, while making no receipt, signature, or human attribution
+  claim for the stock v0.8.3 direct CLI path.
 
 Read the complete [threat model](./docs/THREAT_MODEL.md) before mainnet use.
 The [standards crosswalk](./docs/STANDARDS.md) maps each interoperability and
@@ -108,9 +109,12 @@ non-claims.
 ```
 
 The integration is Tier 1: stock ZeroClaw skill instructions, supervised SOP
-references, CLI channel, and one dependency-light local helper. No custom
-ZeroClaw fork, WASM plugin, MCP server, or wallet SDK is required. The locked
-demo profile exposes no raw `shell`: its six manifest-locked wrappers are three
+references, a private Telegram DM channel (with CLI fallback), and one
+dependency-light local helper. No custom ZeroClaw fork, WASM plugin, MCP
+server, or wallet SDK is required. Telegram uses ZeroClaw's native long
+polling, exact-peer gate, and inline one-shot approval; it needs no webhook or
+public listener. The locked demo profile exposes no raw `shell`: its six
+manifest-locked wrappers are three
 non-mutating views (`hash_sample`, `preview_sample`, and
 `list_local_requests`), one always-ask idempotent request writer
 (`create_sample_request`), one fixed reconciler that may persist a verified
@@ -121,11 +125,14 @@ but general dynamic SOP shell steps remain documentation for an
 operator-managed deployment and are not executable through this locked demo
 profile.
 
-The demo publishes a sanitized trace summary only after it finds both a parsed
-native tool call and the actual fixed-helper result in the same ZeroClaw trace.
-This is reproducible evidence against model narration—not a cryptographic
-receipt, an external attestation, or a substitute for the visible approval
-gate.
+The demo publishes a sanitized trace summary only after it finds the parsed
+native tool call, matching tool-start event, and actual successful fixed-helper
+result in that order, in the same ZeroClaw trace and iteration. For the
+Telegram capture, it additionally requires all three records to be attributed
+to `telegram.proofpay` and agent `proofpay`, and prints
+`ordered_parse_start_result=true`. This is reproducible evidence against model
+narration—not a cryptographic receipt, an external attestation, or a substitute
+for the visible approval gate.
 
 ## What gets bound
 
@@ -225,6 +232,32 @@ copied, config-owned workspace rather than the checkout. The template uses an
 OpenAI Codex subscription slot without embedding credentials; login remains an
 explicit operator action.
 
+For the real private-DM demo, prepare a disposable runtime outside the
+checkout, then configure Telegram interactively:
+
+```sh
+sh ./proofpay/demo/prepare-zeroclaw-demo.sh \
+  proofpay-telegram /private/tmp/proofpay-runtime
+
+zeroclaw --config-dir \
+  /private/tmp/proofpay-runtime/proofpay-telegram \
+  auth login --model-provider openai-codex
+
+sh ./proofpay/demo/configure-telegram-demo.sh \
+  /private/tmp/proofpay-runtime/proofpay-telegram
+```
+
+The auth profile is scoped to this temporary runtime; a login made against a
+different config directory does not satisfy the channel agent. Before running
+the final script, use BotFather `/setjoingroups` and disable group joins for the
+temporary bot. The script accepts no token argument or token environment
+variable. It asks ZeroClaw to read the token through masked terminal input,
+requires encrypted persistence, runs the channel health check, and leaves the
+committed template unchanged. Start the displayed `zeroclaw --log-level info
+channel start` command so the immutable trace floor records dispatch proof,
+then pair one numeric Telegram identity from a private DM. Never use a group,
+wildcard peer, or the Telegram **Always** approval action.
+
 Full clean-room instructions are in
 [`docs/REPRODUCE.md`](./docs/REPRODUCE.md).
 Tested-source bundle reproducibility and GitHub attestation scope are in
@@ -264,7 +297,7 @@ Preview the same request without persistence:
 
 ```sh
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --recipient "${PROOFPAY_RECIPIENT}" \
   --amount 5.00 \
   --network devnet \
@@ -280,7 +313,7 @@ APPROVED_REFERENCE="<preview.approval.reference>"
 APPROVED_URI="<preview.approval.solanaPayUri>"
 
 ./proofpay/tools/proofpay.mjs create \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --recipient "${PROOFPAY_RECIPIENT}" \
   --amount 5.00 \
   --network devnet \
@@ -318,20 +351,20 @@ Examples:
 ./proofpay/tools/proofpay.mjs list --compact --json
 
 ./proofpay/tools/proofpay.mjs check \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --compact --json
 
 ./proofpay/tools/proofpay.mjs evidence \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --compact
 
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m3.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt
 
 # Re-run the same canonical checks against the allowlisted Solana RPC.
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m3.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt \
   --online
 ```
@@ -443,7 +476,9 @@ proofpay/
 │   └── SUPPLY_CHAIN.md
 └── demo/
     ├── live-evidence/                    # public recorded devnet fixture
+    ├── configure-telegram-demo.sh        # masked token + health preflight
     ├── prepare-zeroclaw-demo.sh
+    ├── summarize-runtime-trace.mjs       # optional channel attribution gate
     ├── VIDEO_SCRIPT.md
     ├── run-demo.sh
     └── prompt-injection-transcript.md

@@ -1,117 +1,127 @@
-# ProofPay EURC - final video script (2:55 maximum)
+# ProofPay EURC — final Telegram video script (2:55 maximum)
 
-Record one continuous terminal session from a clean isolated runtime. Freeze and
-push the source commit first. Show no seed, private key, browser profile, API
-token, `.secrets` file, or raw ledger contents. The external payer script may
-print only public addresses, balances, the finalized signature, and the
-explorer URL.
+Record the real private-DM flow from a clean isolated runtime after executable
+source, policy, config, and PDF are frozen and pushed. Pair the temporary bot
+before recording. After the flow, commit only the reviewed sanitized m3
+evidence, expected signature/fixture constants, and stable publication links;
+append that post-flow HEAD as the closing shot. Hide the Telegram sidebar,
+contact identity, notifications, BotFather chat, token, config, raw trace,
+payer key, wallet seed, and browser profile. Enable system Do Not Disturb.
 
-When using `proofpay-demo.tape`, export `PROOFPAY_VIDEO_RUNTIME`,
-`PROOFPAY_DEVNET_PAYER_SCRIPT`, `PROOFPAY_ZEROCLAW_BIN`, and the directory
-containing the payer-compatible Node binary as `PROOFPAY_NODE_BIN_DIR`. The
-tape forwards those values explicitly and the capture script fails before any
-payment if the runtime is not fresh or the payer path is absent or unsafe.
+Use one continuous capture where practical. Model/RPC waiting may be
+accelerated only with an explicit on-screen speed label; never splice in a
+result from another runtime or transaction. The payer script may print only
+public addresses, balances, finalized signature, and explorer URL.
 
-## 0:00-0:20 - Problem and promise
+## 0:00–0:12 — Product first
 
-> Payment links identify an amount and recipient, but usually lose the exact
-> work revision being paid. ProofPay binds an opaque deliverable SHA-256 to an
-> EURC Solana Pay request. A real ZeroClaw CLI agent creates, reconciles, and
-> evidences it, but never receives a wallet or signing capability.
+Open on the private Telegram DM, not a title slide.
 
-Show the repository URL and frozen commit.
+> ProofPay binds the exact SHA-256 revision being paid to a human-approved EURC
+> Solana Pay request. ZeroClaw can create, verify, and evidence it—but it never
+> receives a wallet.
 
-## 0:20-0:40 - Small authority surface
+Briefly overlay the public repository and pre-flow implementation commit.
 
-Show `proofpay/skills/proofpay-demo-tools/SKILL.toml` and the ZeroClaw skill
-listing:
+## 0:12–0:38 — Exact preview in Telegram
 
-- six manifest-locked tools and no model-visible raw shell;
-- `create_sample_request` is the only financial-intent checkpoint and is
-  `always_ask`;
-- reconciliation and evidence are fixed post-payment actions;
-- browser, HTTP, MCP, wallet, signer, transfer, refund, and arbitrary RPC tools
-  are absent.
+Send:
 
-The CLI is an official always-available ZeroClaw channel. State that any macOS
-no-OS-sandbox fallback exists only in a disposable `/private/tmp` recording
-runtime; the distributed template keeps the sandbox enabled.
+```text
+Run the fixed ProofPay devnet preview through the proofpay-demo tool.
+Return only the actual tool result; do not calculate or invent any field.
+```
 
-## 0:40-1:00 - Tests and canonical preview
+Keep the native tool result visible. Highlight only:
 
-Run `npm test` and retain both passing summaries. Briefly name the negative
-coverage: preview mismatch, conflicting idempotency key, path/symlink escape,
-concurrent writers, canonical ATA, wrong mint/recipient/amount/memo/reference,
-instruction order, signature reuse, time bounds, expiry, evidence tampering,
-and offline-versus-online verification scope.
+- invoice `demo-atlas-m3`;
+- 5 EURC on devnet and the Circle-listed mint;
+- exact deliverable SHA-256;
+- seven-day validity, reference, and Solana Pay URI;
+- preview is non-persistent and no funds moved.
 
-Show the fixed preview and highlight:
+## 0:38–1:02 — Native inline approval
 
-- `demo-atlas-m2`, devnet, 5 EURC;
-- Circle-listed EURC mint;
-- 604800-second payment window;
-- deliverable SHA-256
-  `4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8`;
-- reference
-  `6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y`;
-- canonical Solana Pay URI;
-- preview is non-persistent.
+Send:
 
-## 1:00-1:35 - ZeroClaw creates the request
+```text
+Create the one fixed ProofPay demo request with create_sample_request.
+```
 
-Ask the agent to call `proofpay-demo__create_sample_request` exactly once.
-Keep the explicit ZeroClaw approval prompt visible, approve once, and retain
-the native tool result. Show the sanitized trace proof requiring both
-`native_tool_calls > 0` and `parsed_tool_calls > 0`.
+Show ZeroClaw's native Telegram inline approval card. The stock card names the
+fixed wrapper but does not repeat its manifest-locked arguments, so compare the
+exact amount, digest, reference, and URI in the immediately preceding preview.
+Tap the one-shot **Approve** action once, and never choose **Always**. Keep the
+real tool result visible: `pending`, exact reference/URI, `payment: null`, and
+expiry. State that the fixed wrapper is idempotent and cannot sign or submit.
 
-Highlight `pending`, the exact digest/reference/URI, seven-day expiry, and
-`payment: null`. An identical retry is idempotent; the same invoice ID with
-different immutable terms fails with `INVOICE_CONFLICT`.
+## 1:02–1:27 — Independent payer
 
-The trace is dispatch evidence, not a cryptographic tool receipt or human
-signature. Preview freshness is supplied by the visible `always_ask`
-checkpoint; the reference binds the fixed duration and immutable terms, not an
-absolute preview timestamp.
-
-## 1:35-2:05 - Independent payer and agent reconciliation
-
-Run the private `/private/tmp` payer script outside ZeroClaw. It sends exactly
-5 faucet EURC on Solana devnet and prints the finalized signature plus
-explorer URL. State:
+Switch to the safe terminal view and run the private external payer. It must
+make a **new** 5 EURC devnet transfer after this request was created; the older
+fixture transaction cannot satisfy the new payment window. Show the public
+finalized signature and explorer URL.
 
 > The payer signed independently. Its key never entered the repository,
 > ZeroClaw config, agent workspace, prompt, trace, or evidence.
 
-Ask ZeroClaw to call `proofpay-demo__check_sample_payment`. Show the returned
-`paid` status, signature, slot, and finality. Explain that ProofPay checks the
-exact reference, memo, mint, amount, recipient canonical ATA, balance delta,
-instruction order, success, finality, and block-time window before persisting
-`pending -> paid`.
+## 1:27–1:52 — Telegram reconciliation
 
-## 2:05-2:35 - Evidence and independent verification
+Return to the same DM and send:
 
-Ask ZeroClaw to call `proofpay-demo__write_sample_evidence`. Show the schema-v3
-bundle path, signature, digest, `expiresAt`, and
-`withinPaymentWindow: true`.
-
-Then run:
-
-```sh
-./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
-  --deliverable proofpay/deliverables/sample-milestone.txt \
-  --online
+```text
+Call proofpay-demo__check_sample_payment exactly once. Return only its actual
+compact result.
 ```
 
-Show `proofpay-online-evidence-v1`, `onChainLookupPerformed: true`, and
-`onChainPayment: true`. Clarify that offline mode independently checks schema,
-canonical terms, time bounds, and artifact digest; `--online` additionally
-re-queries Solana. Neither mode authenticates the evidence producer.
+Show `paid`, finalized signature, slot, and block time. In one sentence:
+ProofPay requires the unique finalized reference match, exact memo, mint,
+amount, canonical recipient ATA, transfer position, success, and request time
+window.
 
-## 2:35-2:55 - Close
+## 1:52–2:10 — Evidence from the same channel
 
-> ProofPay strengthens payment evidence by shrinking the agent's financial
-> authority: exact intent, external signer, finalized verification, zero
+Send:
+
+```text
+Call proofpay-demo__write_sample_evidence exactly once for the verified sample.
+Return only its actual compact result.
+```
+
+Show `evidence-written`, schema v3, the same signature, and deliverable digest.
+
+## 2:10–2:38 — Independent proof, not narration
+
+In the terminal, show the two passing suite summaries: 12/12 Superteam client
+tests and 30/30 ProofPay tests. Then run the trace summarizer for all four live
+tools—preview, create, check, and evidence—with:
+
+```sh
+node proofpay/demo/summarize-runtime-trace.mjs \
+  <private-runtime>/data/state/runtime-trace.jsonl \
+  <expected-tool> \
+  --channel telegram.proofpay
+```
+
+Keep `channel=telegram.proofpay agent=proofpay`,
+`native_tool_calls=1`, `parsed_tool_calls=1`, and the sanitized result
+visible. Require `ordered_parse_start_result=true`; never show the raw trace.
+
+Run the copied workspace verifier with `--online` and show:
+
+- `proofpay-online-evidence-v1`;
+- `onChainLookupPerformed: true`;
+- `onChainPayment: true`.
+
+## 2:38–2:55 — Close on verifiable artifacts
+
+End on the public explorer transaction, repository, and the post-flow commit
+containing the reviewed sanitized m3 evidence, followed by one sentence:
+
+> Not an invoice generator: one exact work revision, one explicit approval,
+> one finalized payment, one independently verifiable evidence pack—zero
 > custody.
 
-End on the transaction explorer URL, repository URL, and frozen commit SHA.
+After upload and review, revoke the temporary BotFather token and remove the
+temporary runtime. Publish only the sanitized trace summaries and reviewed
+screen capture.

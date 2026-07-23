@@ -19,6 +19,7 @@ model_provider = "openai.proofpay"
 risk_profile = "proofpay"
 runtime_profile = "proofpay"
 skill_bundles = ["proofpay"]
+channels = ["telegram.proofpay"]
 
 [agents.proofpay.identity]
 format = "openclaw"
@@ -29,7 +30,9 @@ unrestricted_filesystem = false
 read_memory_from = []
 
 [providers.models.openai.proofpay]
-model = "gpt-5.4"
+# Verified against a real ChatGPT/Codex OAuth profile on 2026-07-24.
+# The previously pinned gpt-5.4 identifier now returns HTTP 400 on this path.
+model = "gpt-5.6-terra"
 wire_api = "responses"
 requires_openai_auth = true
 
@@ -189,3 +192,32 @@ enabled = false
 cli = true
 max_concurrent_per_channel = 1
 show_tool_calls = true
+session_persistence = false
+
+# Disabled and credential-free in source control. Configure only a copied,
+# private demo runtime with proofpay/demo/configure-telegram-demo.sh; that
+# script asks ZeroClaw to collect the BotFather token through masked input and
+# store only its encrypted form. Direct messages are the supported demo
+# surface. Never use a group for approval callbacks and never broaden the peer
+# set to "*".
+[channels.telegram.proofpay]
+enabled = false
+bot_token = ""
+api_base_url = "https://api.telegram.org"
+stream_mode = "off"
+draft_update_interval_ms = 1000
+interrupt_on_new_message = false
+mention_only = true
+ack_reactions = false
+approval_timeout_secs = 120
+excluded_tools = []
+reply_min_interval_secs = 0
+reply_queue_depth_max = 0
+
+[peer_groups.telegram_proofpay]
+channel = "telegram.proofpay"
+agents = ["proofpay"]
+external_peers = []
+ignore = []
+output_modality = "text"
+admin_for_agent_scope = false

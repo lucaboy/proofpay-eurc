@@ -52,6 +52,24 @@ const liveEvidencePath = fileURLToPath(
 const liveDeliverablePath = fileURLToPath(
   new URL("../deliverables/sample-milestone.txt", import.meta.url),
 );
+const zeroclawTemplatePath = fileURLToPath(
+  new URL("../config/zeroclaw.template.toml", import.meta.url),
+);
+const traceSummarizerPath = fileURLToPath(
+  new URL("../demo/summarize-runtime-trace.mjs", import.meta.url),
+);
+const prepareDemoPath = fileURLToPath(
+  new URL("../demo/prepare-zeroclaw-demo.sh", import.meta.url),
+);
+const configureTelegramPath = fileURLToPath(
+  new URL("../demo/configure-telegram-demo.sh", import.meta.url),
+);
+const captureLiveDemoPath = fileURLToPath(
+  new URL("../demo/capture-live-demo.sh", import.meta.url),
+);
+const demoToolManifestPath = fileURLToPath(
+  new URL("../skills/proofpay-demo-tools/SKILL.toml", import.meta.url),
+);
 const LIVE_SIGNATURE =
   "5Du1jycfRHexow5gWCpFoVyKtj26N2ika6W7DzFj7PS3V3k1AsX1TFY2psJsnmCT6Aknk4T2YLkc4MJUy3qYya6R";
 
@@ -964,6 +982,370 @@ test("corrupt or symlinked storage is rejected", async () => {
   await symlink(outside, env.storagePath);
   await expectCode("UNSAFE_STORAGE", () =>
     listInvoices({ storagePath: env.storagePath }),
+  );
+});
+
+test("committed Telegram profile is disabled, credential-free, and deny-by-default", async () => {
+  const config = await readFile(zeroclawTemplatePath, "utf8");
+  const agentSection = config.match(
+    /\[agents\.proofpay\]\n([\s\S]*?)(?=\n\[)/,
+  )?.[1];
+  const channelsSection = config.match(
+    /\[channels\]\n([\s\S]*?)(?=\n\[)/,
+  )?.[1];
+  const telegramSection = config.match(
+    /\[channels\.telegram\.proofpay\]\n([\s\S]*?)(?=\n\[)/,
+  )?.[1];
+  const peerSection = config.match(
+    /\[peer_groups\.telegram_proofpay\]\n([\s\S]*?)(?=\n\[|$)/,
+  )?.[1];
+
+  assert.match(agentSection ?? "", /^channels = \["telegram\.proofpay"\]$/m);
+  assert.match(channelsSection ?? "", /^session_persistence = false$/m);
+  assert.match(telegramSection ?? "", /^enabled = false$/m);
+  assert.match(telegramSection ?? "", /^bot_token = ""$/m);
+  assert.match(
+    telegramSection ?? "",
+    /^api_base_url = "https:\/\/api\.telegram\.org"$/m,
+  );
+  assert.match(telegramSection ?? "", /^mention_only = true$/m);
+  assert.match(telegramSection ?? "", /^ack_reactions = false$/m);
+  assert.match(telegramSection ?? "", /^approval_timeout_secs = 120$/m);
+  assert.match(peerSection ?? "", /^channel = "telegram\.proofpay"$/m);
+  assert.match(peerSection ?? "", /^agents = \["proofpay"\]$/m);
+  assert.match(peerSection ?? "", /^external_peers = \[\]$/m);
+  assert.match(peerSection ?? "", /^admin_for_agent_scope = false$/m);
+  assert.doesNotMatch(config, /external_peers\s*=\s*\[[^\]]*"\*"/);
+  assert.doesNotMatch(config, /\b\d{6,}:[A-Za-z0-9_-]{20,}\b/);
+});
+
+test("fixed m3 tool manifest matches a freshly derived canonical preview", async () => {
+  const preview = await previewInvoice(
+    {
+      invoiceId: "demo-atlas-m3",
+      recipient: RECIPIENT,
+      amount: "5.00",
+      deliverable: path.basename(liveDeliverablePath),
+      network: "devnet",
+    },
+    {
+      deliverablesDir: path.dirname(liveDeliverablePath),
+    },
+  );
+  const manifest = await readFile(demoToolManifestPath, "utf8");
+  const toolSection = (name) =>
+    manifest.match(
+      new RegExp(
+        `\\[\\[tools\\]\\]\\nname = "${name}"\\n([\\s\\S]*?)(?=\\n\\[\\[tools\\]\\]|$)`,
+      ),
+    )?.[1] ?? "";
+
+  assert.equal(preview.id, "demo-atlas-m3");
+  assert.equal(
+    preview.reference,
+    "343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt",
+  );
+  assert.match(
+    toolSection("preview_sample"),
+    /--invoice demo-atlas-m3 .*--amount 5\.00 .*--network devnet .*--deliverable sample-milestone\.txt/,
+  );
+  const create = toolSection("create_sample_request");
+  assert.match(create, /--invoice 'demo-atlas-m3'/);
+  assert.ok(
+    create.includes(`--approve-digest '${preview.deliverable.sha256}'`),
+  );
+  assert.ok(create.includes(`--approve-reference '${preview.reference}'`));
+  assert.ok(create.includes(`--approve-uri '${preview.solanaPayUri}'`));
+  assert.match(
+    toolSection("check_sample_payment"),
+    /check --invoice demo-atlas-m3 --compact --json/,
+  );
+  assert.match(
+    toolSection("write_sample_evidence"),
+    /evidence --invoice demo-atlas-m3 --compact --json/,
+  );
+});
+
+test("Telegram trace summary requires channel and agent attribution", async () => {
+  const env = await setup();
+  const tracePath = path.join(env.root, "telegram-trace.jsonl");
+  const createdAt = "2026-07-24T10:00:00.000Z";
+  const expiresAt = "2026-07-31T10:00:00.000Z";
+  const digest =
+    "4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8";
+  const reference = "343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt";
+  const uri =
+    "solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8" +
+    "?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr" +
+    `&reference=${reference}&label=ProofPay%20EURC` +
+    "&message=ProofPay%20invoice%20demo-atlas-m3" +
+    "&memo=PROOFPAY%3Ademo-atlas-m3%3A4a3adafc3eeaa167";
+  const pendingResult = {
+    schemaVersion: 3,
+    id: "demo-atlas-m3",
+    status: "pending",
+    network: "devnet",
+    rpcUrl: "https://api.devnet.solana.com",
+    currency: "EURC",
+    mint: "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+    decimals: 6,
+    recipient: "CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8",
+    amount: "5",
+    amountAtomic: "5000000",
+    validForSeconds: 604800,
+    reference,
+    memo: "PROOFPAY:demo-atlas-m3:4a3adafc3eeaa167",
+    label: "ProofPay EURC",
+    message: "ProofPay invoice demo-atlas-m3",
+    deliverable: {
+      path: "sample-milestone.txt",
+      size: 496,
+      sha256: digest,
+    },
+    solanaPayUri: uri,
+    approval: {
+      schemaVersion: 1,
+      deliverableSha256: digest,
+      reference,
+      solanaPayUri: uri,
+      kind: "preview-match",
+      recordedAt: createdAt,
+    },
+    createdAt,
+    updatedAt: createdAt,
+    expiresAt,
+    idempotent: false,
+    payment: null,
+  };
+  const attribution = {
+    channel: "telegram.proofpay",
+    agent_alias: "proofpay",
+  };
+  const records = [
+    {
+      trace_id: "telegram-turn",
+      zeroclaw: attribution,
+      event: {
+        category: "provider",
+        action: "receive",
+        outcome: "success",
+      },
+      attributes: {
+        iteration: 1,
+        model: "gpt-5.6-terra",
+        native_tool_calls: 1,
+        parsed_tool_calls: 1,
+      },
+    },
+    {
+      trace_id: "telegram-turn",
+      zeroclaw: attribution,
+      event: {
+        category: "tool",
+        action: "start",
+      },
+      attributes: {
+        iteration: 1,
+        tool: "proofpay-demo__create_sample_request",
+      },
+    },
+    {
+      trace_id: "telegram-turn",
+      zeroclaw: attribution,
+      event: {
+        category: "tool",
+        action: "complete",
+        outcome: "success",
+      },
+      attributes: {
+        iteration: 1,
+        tool: "proofpay-demo__create_sample_request",
+        output: JSON.stringify(pendingResult),
+      },
+    },
+  ];
+  const cloneRecords = () => JSON.parse(JSON.stringify(records));
+  const writeTrace = async (value) =>
+    writeFile(
+      tracePath,
+      `${value.map((record) => JSON.stringify(record)).join("\n")}\n`,
+    );
+  const summarize = () =>
+    execFileAsync(process.execPath, [
+      traceSummarizerPath,
+      tracePath,
+      "--channel",
+      "telegram.proofpay",
+    ]);
+  const expectRejected = async (value, pattern) => {
+    await writeTrace(value);
+    await assert.rejects(summarize(), (error) => {
+      assert.match(`${error.message}\n${error.stderr ?? ""}`, pattern);
+      return true;
+    });
+  };
+
+  await writeTrace(records);
+  const accepted = await summarize();
+  assert.match(accepted.stdout, /channel=telegram\.proofpay agent=proofpay/);
+  assert.match(accepted.stdout, /native_tool_calls=1 parsed_tool_calls=1/);
+  assert.match(accepted.stdout, /ordered_parse_start_result=true/);
+
+  const previewRecords = cloneRecords();
+  const previewResult = JSON.parse(previewRecords[2].attributes.output);
+  previewResult.status = "preview";
+  delete previewResult.createdAt;
+  delete previewResult.updatedAt;
+  delete previewResult.expiresAt;
+  delete previewResult.idempotent;
+  delete previewResult.payment;
+  delete previewResult.approval.kind;
+  delete previewResult.approval.recordedAt;
+  previewRecords[1].attributes.tool = "proofpay-demo__preview_sample";
+  previewRecords[2].attributes.tool = "proofpay-demo__preview_sample";
+  previewRecords[2].attributes.output = JSON.stringify(previewResult);
+  await writeTrace(previewRecords);
+  const acceptedPreview = await execFileAsync(process.execPath, [
+    traceSummarizerPath,
+    tracePath,
+    "proofpay-demo__preview_sample",
+    "--channel",
+    "telegram.proofpay",
+  ]);
+  assert.match(
+    acceptedPreview.stdout,
+    /tool=proofpay-demo__preview_sample/,
+  );
+  assert.match(acceptedPreview.stdout, /result\.status=preview/);
+  assert.match(acceptedPreview.stdout, /persistence=false payment=false/);
+
+  const wrongResultChannel = cloneRecords();
+  wrongResultChannel[2].zeroclaw = {
+    channel: "cli",
+    agent_alias: "proofpay",
+  };
+  await expectRejected(
+    wrongResultChannel,
+    /returned tool result is not attributed to telegram\.proofpay/,
+  );
+
+  const nullTrace = cloneRecords();
+  nullTrace[2].trace_id = null;
+  await expectRejected(
+    nullTrace,
+    /does not contain a successful, identified/,
+  );
+
+  const crossIteration = cloneRecords();
+  crossIteration[2].attributes.iteration = 2;
+  await expectRejected(
+    crossIteration,
+    /missing a successful provider receive in the result iteration/,
+  );
+
+  const extraParsedCall = cloneRecords();
+  extraParsedCall[0].attributes.native_tool_calls = 2;
+  extraParsedCall[0].attributes.parsed_tool_calls = 2;
+  await expectRejected(
+    extraParsedCall,
+    /nearest provider receive does not contain exactly one parsed native tool call/i,
+  );
+
+  const shadowedProvider = cloneRecords();
+  const newestProvider = JSON.parse(JSON.stringify(shadowedProvider[0]));
+  newestProvider.attributes.native_tool_calls = 2;
+  newestProvider.attributes.parsed_tool_calls = 2;
+  shadowedProvider.splice(1, 0, newestProvider);
+  await expectRejected(
+    shadowedProvider,
+    /nearest provider receive does not contain exactly one parsed native tool call/i,
+  );
+
+  const wrongModel = cloneRecords();
+  wrongModel[0].attributes.model = "gpt-5.4";
+  await expectRejected(
+    wrongModel,
+    /not attributed to the verified gpt-5\.6-terra model/,
+  );
+
+  const wrongParsedChannel = cloneRecords();
+  wrongParsedChannel[0].zeroclaw.channel = "cli";
+  await expectRejected(
+    wrongParsedChannel,
+    /parsed native tool call is not attributed to telegram\.proofpay/,
+  );
+
+  const partialResult = cloneRecords();
+  const partialOutput = JSON.parse(partialResult[2].attributes.output);
+  delete partialOutput.amountAtomic;
+  partialResult[2].attributes.output = JSON.stringify(partialOutput);
+  await expectRejected(
+    partialResult,
+    /not the complete canonical pending demo request/,
+  );
+
+  const wrongUri = cloneRecords();
+  const wrongUriOutput = JSON.parse(wrongUri[2].attributes.output);
+  wrongUriOutput.solanaPayUri = wrongUriOutput.solanaPayUri.replace(
+    "spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+    "spl-token=So11111111111111111111111111111111111111112",
+  );
+  wrongUriOutput.approval.solanaPayUri = wrongUriOutput.solanaPayUri;
+  wrongUri[2].attributes.output = JSON.stringify(wrongUriOutput);
+  await expectRejected(
+    wrongUri,
+    /not the complete canonical pending demo request/,
+  );
+});
+
+test("demo shell entrypoints are syntactically valid and never accept a token argument", async () => {
+  await execFileAsync("sh", ["-n", prepareDemoPath]);
+  await execFileAsync("sh", ["-n", configureTelegramPath]);
+  const setupScript = await readFile(configureTelegramPath, "utf8");
+  assert.match(
+    setupScript,
+    /config set channels\.telegram\.proofpay\.bot_token\s*\n/,
+  );
+  assert.doesNotMatch(setupScript, /BOT_TOKEN|TELEGRAM_TOKEN|TOKEN=\$\{/);
+  assert.match(
+    setupScript,
+    /The BotFather token is never accepted as an argument or environment variable/,
+  );
+  assert.match(
+    setupScript,
+    /PEER_GROUP_CHANNEL_COUNT[\s\S]*-ne 1[\s\S]*Refusing extra or type-wide peer groups/,
+  );
+  assert.match(
+    setupScript,
+    /auth status[\s\S]*No auth profiles configured[\s\S]*auth login --model-provider openai-codex/,
+  );
+  assert.match(
+    setupScript,
+    /PROOFPAY_MODEL_CANARY[\s\S]*PROOFPAY_MODEL_CANARY_OK[\s\S]*Telegram remains disabled/,
+  );
+  assert.match(
+    setupScript,
+    /--log-level info channel start[\s\S]*immutable info trace floor/,
+  );
+  const captureScript = await readFile(captureLiveDemoPath, "utf8");
+  assert.match(
+    captureScript,
+    /git -C "\$\{REPO_ROOT\}" status --porcelain --untracked-files=normal/,
+  );
+  assert.match(setupScript, /Type GROUPS-DISABLED/);
+  assert.match(
+    setupScript,
+    /trap 'exit 129' HUP[\s\S]*trap 'exit 130' INT[\s\S]*trap 'exit 143' TERM/,
+  );
+  assert.ok(
+    setupScript.indexOf("CHANNEL_ENABLED=true") <
+      setupScript.indexOf(
+        "config set channels.telegram.proofpay.enabled true",
+      ),
+  );
+  assert.match(
+    setupScript,
+    /\^Summary: 1 healthy, 0 unhealthy, 0 timed out\$/,
   );
 });
 

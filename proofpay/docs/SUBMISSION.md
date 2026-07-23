@@ -81,7 +81,7 @@ the same evidence bytes.
 - The locked demo profile exposes no raw shell. Six fixed wrappers provide
   hash, preview, compact list, always-ask idempotent creation, fixed
   reconciliation, and exclusive evidence writing for the hard-locked canonical
-  `demo-atlas-m2` devnet request.
+  `demo-atlas-m3` devnet request.
 - The general SOP shell steps remain reference documentation for an
   operator-managed profile; starting an SOP cannot make raw shell dispatchable
   in this locked demo.
@@ -90,8 +90,17 @@ the same evidence bytes.
   agent remains walletless. A live-call claim is valid only when the video
   visibly contains the parsed calls and returned helper JSON.
 - The stock ZeroClaw 0.8.3 binary is used; there is no fork or custom runtime.
-- The recorded interaction uses ZeroClaw's built-in CLI channel, a real channel
-  that the official channel matrix lists as always available.
+- The primary recording uses ZeroClaw's native Telegram long-poll channel in
+  one private DM, with its inline one-shot approval and exact numeric peer
+  pairing. It needs no webhook or public listener. The CLI remains a
+  dependency-free fallback.
+- The channel trace verifier requires an ordered parsed-call → tool-start →
+  successful-result chain in one trace and iteration, with
+  `telegram.proofpay` plus agent `proofpay` attribution on all three records,
+  before the recorded dispatch claim passes.
+- The committed Telegram alias is disabled, token-free, non-persistent, and
+  deny-by-default. The temporary BotFather token is entered masked, stored
+  encrypted outside the checkout, revoked after capture, and never published.
 - The distributed template keeps the OS sandbox on `auto`; an explicit
   `/private/tmp` no-sandbox flag exists only for a trusted local macOS
   recording affected by the stock 0.8.3 Seatbelt/Node bug and prints a
@@ -151,10 +160,10 @@ mode authenticates the evidence producer.
 - [One-pager](https://drive.google.com/file/d/1TOnDbGysRhAmgfB1SKux9pv5S60IdgtV/view?usp=sharing)
 - [ZeroClaw Discord `#solana-bounty` showcase](https://discord.com/channels/1472154792351760419/1527427886410109029/1529827367919423628)
 
-Do not submit until all four links resolve publicly, the repository commit
-shown in the video matches the submitted source, and the video visibly proves
-the live tool dispatch. Repository code alone is not evidence that the model
-already completed a tool call.
+Do not submit until all four links resolve publicly, the post-flow repository
+commit shown at the end of the video matches the submitted source, and the
+video visibly proves the live tool dispatch. Repository code alone is not
+evidence that the model already completed a tool call.
 
 ## Discord showcase draft
 
@@ -164,9 +173,10 @@ already completed a tool call.
 > ZeroClaw 0.8.3, supervised SOP checkpoint, fixed Circle mint, no signer/send/
 > refund path, preview-bound creation, single-writer persistence, exclusive
 > no-overwrite evidence bundles, evidence schema v3, canonical associated token
-> verification, a real devnet `pending → paid → evidence` capture, offline and
-> online evidence verification, a fully passing suite, and an included
-> prompt-injection red team.
+> verification, a real private-Telegram-DM inline approval and devnet
+> `pending → paid → evidence` capture, channel-attributed dispatch proof,
+> offline and online evidence verification, a fully passing suite, and an
+> included prompt-injection red team.
 > Repo: `https://github.com/lucaboy/proofpay-eurc` · Demo: see the public
 > bounty submission link.
 
@@ -177,7 +187,7 @@ npm test
 npm run verify:live-evidence
 
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
   --amount 5.00 \
   --network devnet \
@@ -208,14 +218,23 @@ Before submission, verify that:
   attestation as described in `SUPPLY_CHAIN.md`;
 - the video is shorter than three minutes and visibly contains the direct
   fixed-helper preview, native `proofpay-demo__create_sample_request` dispatch
-  over the CLI channel, approval gate, `check_sample_payment`,
-  `write_sample_evidence`, and verified result traces;
-- source and PDF are frozen before capture, while the generated MP4 remains
-  external to Git;
+  over the private Telegram channel, inline one-shot approval,
+  `check_sample_payment`, `write_sample_evidence`, and channel-attributed
+  verified result traces;
+- executable source, policy, config, and PDF are frozen before capture. After
+  the live flow, commit only the sanitized m3 evidence, its expected
+  signature/fixture constants, and stable publication links; append the
+  resulting post-flow HEAD to the final video. The generated MP4 remains
+  external to Git and replaces the file behind its already-stable public link;
 - the independent payer and walletless-agent boundary is stated explicitly;
 - the public finalized devnet explorer URL matches evidence that passes both
   offline and `--online` verification;
 - the final Discord showcase and Superteam submission point to the same
-  repository, commit, video, one-pager, and transaction; and
+  repository, commit, video, one-pager, and transaction;
 - no seed phrase, private key, API key, claim code, PII, or controlled
-  production recipient appears in any published artifact.
+  production recipient appears in any published artifact;
+- Telegram sidebars and notifications are hidden, and no BotFather token,
+  paired numeric ID, raw trace, session metadata, or encrypted runtime config
+  appears in a published artifact; and
+- the temporary bot token is revoked and the temporary runtime removed only
+  after the final capture has been uploaded and independently reviewed.

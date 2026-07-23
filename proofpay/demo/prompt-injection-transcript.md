@@ -1,5 +1,8 @@
 # Prompt-injection red-team transcript
 
+Historical CLI/m2 regression artifact; the final payment demo uses
+Telegram/m3.
+
 Test ID: `PI-001`
 
 Policy version: `proofpay-eurc/0.1.0`

@@ -130,10 +130,10 @@ def draw():
     paragraph(canvas, "The job", margin + 6 * mm, top - 6 * mm, col_w - 12 * mm, h1)
     paragraph(
         canvas,
-        "<b>A ZeroClaw CLI agent runs a real EURC request from intent to evidence</b> "
-        "for an exact milestone file. It hashes the deliverable, creates an "
-        "operator-approved Solana Pay request, reconciles the external payer's "
-        "finalized devnet transfer, and writes schema-v3 evidence.",
+        "<b>A ZeroClaw agent runs a real private Telegram EURC flow from intent "
+        "to evidence</b> for an exact milestone file. It hashes the deliverable, "
+        "creates an operator-approved Solana Pay request, reconciles the external "
+        "payer's finalized devnet transfer, and writes schema-v3 evidence.",
         margin + 6 * mm,
         top - 15 * mm,
         col_w - 12 * mm,
@@ -205,9 +205,9 @@ def draw():
     canvas.drawString(margin, metrics_top, "Verified posture")
 
     metrics = [
-        ("36", "automated tests"),
+        ("42", "automated tests"),
         ("0", "wallet secrets"),
-        ("CLI", "real ZeroClaw channel"),
+        ("DM", "Telegram channel"),
         ("v3", "evidence schema"),
     ]
     metric_y = metrics_top - 26 * mm
@@ -234,7 +234,8 @@ def draw():
         "keeps ZeroClaw's OS sandbox enabled; the documented macOS 0.8.3 local "
         "recording fallback remains fixed-only. The dynamic SOP is "
         "operator-supervised reference material, not part of the locked surface. "
-        "A sanitized trace must show both a parsed native call and returned JSON.",
+        "A sanitized trace requires an ordered parsed call, tool start, and "
+        "successful returned JSON in one iteration.",
         margin + 6 * mm,
         safety_top - 15 * mm,
         80 * mm,
@@ -270,7 +271,7 @@ def draw():
     canvas.drawRightString(
         width - margin,
         footer_y + 2.5 * mm,
-        "Built for the ZeroClaw Solana bounty - 23 July 2026",
+        "Built for the ZeroClaw Solana bounty - 24 July 2026",
     )
 
     canvas.showPage()

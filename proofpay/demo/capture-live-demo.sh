@@ -46,8 +46,8 @@ if [ ! -f "${PAYER_SCRIPT}" ] || [ -L "${PAYER_SCRIPT}" ]; then
   echo "External devnet payer script is missing or unsafe: ${PAYER_SCRIPT}" >&2
   exit 2
 fi
-if ! git -C "${REPO_ROOT}" diff --quiet ||
-   ! git -C "${REPO_ROOT}" diff --cached --quiet; then
+GIT_STATUS=$(git -C "${REPO_ROOT}" status --porcelain --untracked-files=normal)
+if [ -n "${GIT_STATUS}" ]; then
   echo "Refusing to record from a dirty source tree; commit the exact source first." >&2
   exit 2
 fi
@@ -57,8 +57,8 @@ trap 'rm -f "${TEST_LOG}"' EXIT HUP INT TERM
 
 printf '\033[2J\033[H'
 printf '%s\n' \
-  "PROOFPAY EURC — REAL ZEROCLAW AGENT / EXTERNAL PAYER" \
-  "====================================================="
+  "PROOFPAY EURC — CLI FALLBACK CAPTURE (NOT FINAL TELEGRAM VIDEO)" \
+  "==============================================================="
 printf 'source_commit=%s\n' "$(git -C "${REPO_ROOT}" rev-parse HEAD)"
 "${ZEROCLAW_BIN}" --version
 printf '%s\n\n' \
@@ -91,7 +91,7 @@ printf '%s\n' "3) DIRECT FIXED-HELPER PREVIEW (CANONICAL, NON-PERSISTENT)"
 (
   cd "${WORKSPACE_DIR}"
   ./proofpay/tools/proofpay.mjs preview \
-    --invoice demo-atlas-m2 \
+    --invoice demo-atlas-m3 \
     --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
     --amount 5.00 \
     --network devnet \
@@ -103,7 +103,7 @@ printf '%s\n\n' \
 printf '%s\n' "4) ZEROCLAW MODEL CALL + EXPLICIT APPROVAL CHECKPOINT"
 export PROOFPAY_VIDEO_ZEROCLAW="${ZEROCLAW_BIN}"
 export PROOFPAY_VIDEO_CONFIG="${CONFIG_DIR}"
-export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__create_sample_request exactly once to persist the fixed demo-atlas-m2 devnet request. Do not call any other tool. After the actual tool result, reply in one line with the request id, status, and that no funds moved."
+export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__create_sample_request exactly once to persist the fixed demo-atlas-m3 devnet request. Do not call any other tool. After the actual tool result, reply in one line with the request id, status, and that no funds moved."
 
 /usr/bin/expect <<'EXPECT_EOF'
 set timeout 300
@@ -135,7 +135,7 @@ node "${SCRIPT_DIR}/summarize-runtime-trace.mjs" \
 printf '\n%s\n' "6) INDEPENDENT DEVNET PAYER (OUTSIDE ZEROCLAW)"
 printf '%s\n' \
   "The payer key stays in a private temporary file and is never copied into the agent."
-node "${PAYER_SCRIPT}" transfer
+node "${PAYER_SCRIPT}" pay
 
 printf '\n%s\n' "7) ZEROCLAW RECONCILES THE FIXED REFERENCE"
 export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__check_sample_payment exactly once. Do not call any other tool. After the actual tool result, reply in one line with the invoice id, paid status, and finalized signature."
@@ -148,7 +148,7 @@ node "${SCRIPT_DIR}/summarize-runtime-trace.mjs" \
   "proofpay-demo__check_sample_payment"
 
 printf '\n%s\n' "8) ZEROCLAW WRITES IMMUTABLE EVIDENCE"
-export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__write_sample_evidence exactly once for demo-atlas-m2. Do not call any other tool. After the actual tool result, reply in one line with the evidence schema and path."
+export PROOFPAY_VIDEO_MESSAGE="Call proofpay-demo__write_sample_evidence exactly once for demo-atlas-m3. Do not call any other tool. After the actual tool result, reply in one line with the evidence schema and path."
 NO_COLOR=1 "${ZEROCLAW_BIN}" \
   --config-dir "${CONFIG_DIR}" \
   agent --agent proofpay --log-level info \
@@ -161,12 +161,12 @@ printf '\n%s\n' "9) INDEPENDENT ONLINE EVIDENCE VERIFICATION"
 (
   cd "${WORKSPACE_DIR}"
   ./proofpay/tools/proofpay.mjs verify-evidence \
-    --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
+    --evidence proofpay/evidence/demo-atlas-m3.evidence/evidence.json \
     --deliverable proofpay/deliverables/sample-milestone.txt \
     --online
 ) | grep -E '"(ok|verification|invoiceId|paymentSignature|onChainLookupPerformed|onChainPayment)"'
 
-FINAL_EVIDENCE="${WORKSPACE_DIR}/proofpay/evidence/demo-atlas-m2.evidence/evidence.json"
+FINAL_EVIDENCE="${WORKSPACE_DIR}/proofpay/evidence/demo-atlas-m3.evidence/evidence.json"
 FINAL_SIGNATURE=$(node -e \
   'const fs=require("fs");const value=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));process.stdout.write(value.payment.signature);' \
   "${FINAL_EVIDENCE}")

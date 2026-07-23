@@ -17,8 +17,10 @@ This repository is a submission for the
   recording: three non-mutating views, one operator-approved idempotent request
   writer, one fixed reconciler, and one exclusive evidence writer;
 - a sanitized ZeroClaw runtime-trace verifier/summarizer that independently
-  requires both a parsed native tool call and its returned helper JSON before a
-  dispatch claim passes;
+  requires an ordered parsed-call → tool-start → successful-result chain before
+  a dispatch claim passes, and can additionally require all three records to
+  carry the real `telegram.proofpay` channel plus the `proofpay` agent
+  attribution;
 - a dependency-free Node.js 16 helper for preview-bound creation, single-writer
   request storage, read-only-chain reconciliation with a verified local paid
   checkpoint, and exclusive no-overwrite
@@ -50,7 +52,7 @@ npm test
 npm run verify:live-evidence
 
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 \
   --amount 5.00 \
   --network devnet \
@@ -74,11 +76,16 @@ For ZeroClaw installation, SOP validation, and a model-driven demo, follow
 
 The supported ZeroClaw setup uses
 `proofpay/demo/prepare-zeroclaw-demo.sh`: it creates a dedicated runtime
-workspace and copies both the policy skill and fixed demo-tool skill. A live
-tool call is proven over ZeroClaw's built-in CLI channel by the final submission
-video and its visible ZeroClaw trace; repository code alone is not evidence of
-model dispatch. ZeroClaw's official channel matrix lists `cli` as an
-always-available channel with no external dependency.
+workspace and copies both the policy skill and fixed demo-tool skill. The
+credential-free source template contains a disabled Telegram alias with an
+empty exact-peer gate. `proofpay/demo/configure-telegram-demo.sh` can enable it
+only in a private temporary runtime: ZeroClaw collects the BotFather token
+through masked input and stores it encrypted. After `channel start`, the
+operator sends the one-time terminal-printed `/bind` command from a private DM;
+that separate step pairs exactly one numeric identity.
+A live tool call is proven by both the visible Telegram interaction and
+channel-attributed ZeroClaw trace; repository code or model prose alone is not
+evidence of dispatch. The built-in CLI remains the dependency-free fallback.
 The final devnet capture follows one real request from approved `pending`
 creation through independently signed payment, ZeroClaw reconciliation to
 `paid`, and exclusive evidence generation. The payer remains outside the agent.

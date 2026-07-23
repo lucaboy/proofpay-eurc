@@ -19,19 +19,19 @@ locked_args = { command = "./proofpay/tools/proofpay.mjs hash --deliverable samp
 
 [[tools]]
 name = "preview_sample"
-description = "Generate the actual non-persistent devnet ProofPay preview for the fixed canonical demo-atlas-m2 sample; it cannot sign, submit, or move funds."
+description = "Generate the actual non-persistent devnet ProofPay preview for the fixed canonical demo-atlas-m3 sample; it cannot sign, submit, or move funds."
 kind = "builtin"
 target = "shell"
 command = ""
-locked_args = { command = "./proofpay/tools/proofpay.mjs preview --invoice demo-atlas-m2 --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 --amount 5.00 --network devnet --deliverable sample-milestone.txt" }
+locked_args = { command = "./proofpay/tools/proofpay.mjs preview --invoice demo-atlas-m3 --recipient CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8 --amount 5.00 --network devnet --deliverable sample-milestone.txt" }
 
 [[tools]]
 name = "create_sample_request"
-description = "Persist the one fixed canonical demo-atlas-m2 devnet request after explicit operator approval; all terms and all three preview-match values are hard-locked, and the helper cannot sign or move funds."
+description = "Persist the one fixed canonical demo-atlas-m3 devnet request after explicit operator approval; all terms and all three preview-match values are hard-locked, and the helper cannot sign or move funds."
 kind = "builtin"
 target = "shell"
 command = ""
-locked_args = { command = "./proofpay/tools/proofpay.mjs create --invoice 'demo-atlas-m2' --recipient 'CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8' --amount '5.00' --network 'devnet' --deliverable 'sample-milestone.txt' --approve-digest '4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8' --approve-reference '6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y' --approve-uri 'solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m2&memo=PROOFPAY%3Ademo-atlas-m2%3A4a3adafc3eeaa167'" }
+locked_args = { command = "./proofpay/tools/proofpay.mjs create --invoice 'demo-atlas-m3' --recipient 'CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8' --amount '5.00' --network 'devnet' --deliverable 'sample-milestone.txt' --approve-digest '4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8' --approve-reference '343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt' --approve-uri 'solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m3&memo=PROOFPAY%3Ademo-atlas-m3%3A4a3adafc3eeaa167'" }
 
 [[tools]]
 name = "list_local_requests"
@@ -43,16 +43,16 @@ locked_args = { command = "./proofpay/tools/proofpay.mjs list --compact --json" 
 
 [[tools]]
 name = "check_sample_payment"
-description = "Reconcile only demo-atlas-m2 against the allowlisted devnet RPC; it cannot sign or move funds and can persist only the verified paid checkpoint."
+description = "Reconcile only demo-atlas-m3 against the allowlisted devnet RPC; it cannot sign or move funds and can persist only the verified paid checkpoint."
 kind = "builtin"
 target = "shell"
 command = ""
-locked_args = { command = "./proofpay/tools/proofpay.mjs check --invoice demo-atlas-m2 --compact --json" }
+locked_args = { command = "./proofpay/tools/proofpay.mjs check --invoice demo-atlas-m3 --compact --json" }
 
 [[tools]]
 name = "write_sample_evidence"
-description = "Write the immutable evidence bundle only for the already verified demo-atlas-m2 payment; it cannot query wallets, sign, or move funds."
+description = "Write the immutable evidence bundle only for the already verified demo-atlas-m3 payment; it cannot query wallets, sign, or move funds."
 kind = "builtin"
 target = "shell"
 command = ""
-locked_args = { command = "./proofpay/tools/proofpay.mjs evidence --invoice demo-atlas-m2 --compact --json" }
+locked_args = { command = "./proofpay/tools/proofpay.mjs evidence --invoice demo-atlas-m3 --compact --json" }

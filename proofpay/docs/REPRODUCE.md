@@ -177,9 +177,8 @@ The supplied template uses ZeroClaw’s OpenAI Codex subscription slot and
 contains no API key. Start ZeroClaw’s own login flow:
 
 ```sh
-zeroclaw auth login \
-  --config-dir .runtime/proofpay-repro \
-  --model-provider openai-codex
+zeroclaw --config-dir .runtime/proofpay-repro \
+  auth login --model-provider openai-codex
 ```
 
 This is an operator action. Do not script it, paste a token into the repository,
@@ -190,7 +189,8 @@ approval mode, and tool restrictions.
 The recording provider is an operator choice and must not alter the risk
 profile, fixed tool commands, approval policy, workspace boundary, or
 repository template. Do not represent a model response as tool execution
-unless the ZeroClaw trace shows the parsed call and returned helper result.
+unless the ZeroClaw trace shows the ordered parsed call, matching tool start,
+and successful returned helper result in one trace and iteration.
 
 ## 6. Run the request-creation phase
 
@@ -230,48 +230,130 @@ To preview without persistence:
 
 ```sh
 ./proofpay/tools/proofpay.mjs preview \
-  --invoice demo-atlas-m2 \
+  --invoice demo-atlas-m3 \
   --recipient "${PROOFPAY_RECIPIENT}" \
   --amount 5.00 \
   --network devnet \
   --deliverable sample-milestone.txt
 ```
 
-## 7. Exercise the ZeroClaw channel
+## 7. Exercise the real Telegram channel
 
-Start the CLI agent:
+Keep the credential-bearing runtime outside the checkout. Create a new one
+under a temporary root; do not reuse the CLI runtime from the earlier checks:
 
 ```sh
-zeroclaw agent \
-  --config-dir .runtime/proofpay-repro \
-  --agent proofpay
+sh ./proofpay/demo/prepare-zeroclaw-demo.sh \
+  proofpay-telegram /private/tmp/proofpay-runtime
+
+zeroclaw --config-dir \
+  /private/tmp/proofpay-runtime/proofpay-telegram \
+  auth login --model-provider openai-codex
+
+sh ./proofpay/demo/configure-telegram-demo.sh \
+  /private/tmp/proofpay-runtime/proofpay-telegram
 ```
 
-For the fixed non-persistent preview, ask:
+Create a temporary bot with Telegram's `@BotFather`, but never put its token in
+this repository, a chat message, a shell argument, or an environment variable.
+The OpenAI Codex auth profile is scoped to this exact config directory; the
+configuration script fails before accepting a bot token if that profile is
+missing. Use BotFather `/setjoingroups` to disable group joins, then type the
+script's explicit confirmation. The script accepts only the prepared config
+directory. ZeroClaw itself prompts for the token with masked input and persists
+only its encrypted form. The script refuses a non-temporary or symlinked
+runtime, a pre-existing ledger/evidence directory, a non-stock version, any
+extra or type-wide peer group, and an unhealthy Telegram credential.
+
+Start the channel in the foreground using the command printed by the setup
+script:
+
+```sh
+zeroclaw --config-dir \
+  /private/tmp/proofpay-runtime/proofpay-telegram \
+  --log-level info channel start
+```
+
+The immutable `info` trace floor is required: the sanitized verifier needs the
+provider receive, tool start, and tool completion events. A default
+warning-only poller can deliver messages successfully while omitting those
+proof records, so do not reuse one for the final flow.
+
+When `channel start` prints the one-time bind code in the private terminal,
+open a **private DM** with the bot and send the displayed `/bind <code>` command
+from the one intended account. The bot may also return a pairing hint, but the
+secret code originates in the operator terminal. Pair only the resulting
+numeric Telegram identity; never use `external_peers = ["*"]`, a group chat,
+or a second bot poller. The committed template is disabled and has an empty
+peer set, so it denies every sender until this explicit pairing occurs.
+
+`channel doctor` proves only that Telegram accepts the bot credential. Before
+recording, send this real private-DM canary:
+
+```text
+PROOFPAY_CANARY: Do not call any tool. Reply with exactly
+PROOFPAY_CANARY_OK and nothing else.
+```
+
+Require the exact `PROOFPAY_CANARY_OK` reply, inspect the daemon for no `409`
+poller conflict, then send `/new` to clear that canary session. This jointly
+exercises Telegram receive/send, the paired peer, channel routing, the
+temporary runtime's model auth, and the provider. It is still not payment-tool
+evidence; the subsequent channel-attributed trace checks provide that.
+
+For the fixed non-persistent preview, send:
 
 ```text
 Run the fixed ProofPay devnet preview through the proofpay-demo tool.
 Return only the actual tool result; do not calculate or invent any field.
 ```
 
-A valid preview claim requires the current session trace to show a parsed
-`proofpay-demo__preview_sample` call and returned helper JSON. To demonstrate
-the approval gate and one real local state transition, then ask:
+A valid preview claim requires the current session trace to show an ordered
+parsed `proofpay-demo__preview_sample` call, matching tool-start event, and
+successful returned helper JSON attributed to `telegram.proofpay` and agent
+`proofpay`. To demonstrate the approval gate and one real local state
+transition, then send:
 
 ```text
 Create the one fixed ProofPay demo request with create_sample_request.
 ```
 
-ZeroClaw must stop at an explicit approval prompt for
-`proofpay-demo__create_sample_request`. Approve only after comparing it with
-the fixed preview. The trace must then show the parsed wrapper call and helper
-JSON with canonical ID `demo-atlas-m2` and status `pending`. Its command,
-digest, reference, and complete URI are hard-locked in `SKILL.toml`; caller
-arguments cannot override them. A second approved invocation cannot overwrite
-the request: an exact retry returns the existing request with
-`idempotent: true`, while different terms for the same ID fail with
-`INVOICE_CONFLICT`. Merely receiving model prose or an echoed command is not
-evidence of dispatch.
+ZeroClaw must display its native Telegram inline approval for
+`proofpay-demo__create_sample_request`. The card authorizes that named fixed
+wrapper; stock v0.8.3 does not repeat its manifest-locked arguments in the
+card. Compare the exact amount, digest, reference, and URI in the preceding
+preview, then tap the one-shot **Approve** action; never choose **Always**. An
+unanswered prompt expires as a denial after 120 seconds. The trace must then
+show, in one trace and iteration, the ordered parsed wrapper call, matching
+tool-start event, and successful helper JSON with canonical ID
+`demo-atlas-m3`, status `pending`, channel `telegram.proofpay`, and agent
+`proofpay`; the sanitized summary prints
+`ordered_parse_start_result=true`. Its command, digest, reference, and complete
+URI are hard-locked in `SKILL.toml`; caller arguments cannot override them. A
+second approved invocation cannot overwrite the request: an exact retry
+returns the existing request with `idempotent: true`, while different terms
+for the same ID fail with `INVOICE_CONFLICT`. Merely receiving model prose or
+an echoed command is not evidence of dispatch.
+
+Sanitize and verify a specific tool trace without publishing the raw
+conversation trace:
+
+```sh
+node ./proofpay/demo/summarize-runtime-trace.mjs \
+  /private/tmp/proofpay-runtime/proofpay-telegram/data/state/runtime-trace.jsonl \
+  proofpay-demo__create_sample_request \
+  --channel telegram.proofpay
+```
+
+The raw trace, encrypted token, paired user/chat identifiers, and session
+metadata remain private temporary artifacts. The direct CLI agent remains a
+fallback for environments without Telegram:
+
+```sh
+zeroclaw agent \
+  --config-dir .runtime/proofpay-repro \
+  --agent proofpay
+```
 
 The general `proofpay-eurc` SOPs remain inspectable reference workflows for an
 operator-managed deployment. Their dynamic shell steps are deliberately not
@@ -292,7 +374,7 @@ The signing step occurs outside ProofPay:
 
 ProofPay cannot perform any of these wallet actions.
 
-After the transaction finalizes, ask the ZeroClaw CLI agent to call only the
+After the transaction finalizes, ask the same Telegram DM to call only the
 fixed reconciliation tool:
 
 ```text
@@ -311,17 +393,21 @@ Return only its actual compact result.
 The result must show `status: evidence-written` and the same signature. These
 tools may write the paid checkpoint and evidence bundle locally, but have no
 wallet or fund-moving capability. The final short video must visibly show the
-real agent calls and results, not only direct helper commands or model prose.
+real Telegram agent calls, inline approval, and results, not only direct helper
+commands or model prose. Run the trace summarizer for the reconciliation and
+evidence tools with `--channel telegram.proofpay`.
 
 Independently validate the pack:
 
 ```sh
+cd /private/tmp/proofpay-runtime/proofpay-telegram/agents/proofpay/workspace
+
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m3.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt
 
 ./proofpay/tools/proofpay.mjs verify-evidence \
-  --evidence proofpay/evidence/demo-atlas-m2.evidence/evidence.json \
+  --evidence proofpay/evidence/demo-atlas-m3.evidence/evidence.json \
   --deliverable proofpay/deliverables/sample-milestone.txt \
   --online
 ```
@@ -330,6 +416,10 @@ The first command checks artifact integrity and self-consistency without a
 network call. The second additionally repeats the exact on-chain lookup through
 the allowlisted network RPC. Neither mode authenticates the evidence producer.
 Use `proofpay/docs/EVIDENCE.md` for the complete verification scope.
+
+After capture, stop the channel, revoke the temporary bot token in BotFather,
+and remove the entire temporary runtime. Do not publish its config, raw trace,
+session database, paired numeric identity, or notification/sidebar metadata.
 
 ## 9. Run the prompt-injection test
 
