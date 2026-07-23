@@ -86,7 +86,7 @@ expect {
     send -- "y\r"
     exp_continue
   }
-  eof
+  eof {}
   timeout {
     puts stderr "Timed out waiting for the local ZeroClaw agent"
     exit 124
