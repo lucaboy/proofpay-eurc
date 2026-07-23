@@ -64,6 +64,9 @@ schema v3 records a technical preview match, fixed `validForSeconds`, absolute
 `expiresAt`, `uniqueSuccessfulFinalizedReference`, and
 `withinPaymentWindow`—not a human signature or checkpoint identity;
 attribution remains in the separate operator/SOP audit trail.
+Independent verification also rejects duplicate decoded JSON object names
+before exact-schema validation, avoiding parser-dependent interpretations of
+the same evidence bytes.
 
 ### Why this is a real ZeroClaw use case
 
@@ -123,6 +126,9 @@ script. The agent refuses and performs no tool call or state mutation.
 
 - Tests: `npm test` — the complete offline suite must pass at the submitted
   commit.
+- Recorded live evidence: `npm run verify:live-evidence` — verifies the public
+  devnet evidence fixture against the exact committed sample bytes without a
+  wallet, runtime ledger, credentials, or network.
 - Core guide: `proofpay/README.md`.
 - Clean-room setup: `proofpay/docs/REPRODUCE.md`.
 - Threat model: `proofpay/docs/THREAT_MODEL.md`.
@@ -168,6 +174,7 @@ already completed a tool call.
 
 ```sh
 npm test
+npm run verify:live-evidence
 
 ./proofpay/tools/proofpay.mjs preview \
   --invoice demo-atlas-m2 \
@@ -193,7 +200,9 @@ Before submission, verify that:
 
 - the public repository resolves in a private browser window;
 - license, README, source, tests, config, SOPs, skills, and sample are present,
-  while `.secrets/`, runtime data, ledgers, and evidence are absent;
+  while `.secrets/`, runtime data, ledgers, and private business evidence are
+  absent; the only committed evidence is the explicitly documented public
+  devnet fixture under `proofpay/demo/live-evidence/`;
 - CI passes on Node.js 16 and 22;
 - the main-branch bundle has a downloadable checksum and GitHub provenance
   attestation as described in `SUPPLY_CHAIN.md`;

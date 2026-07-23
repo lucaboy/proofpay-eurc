@@ -442,6 +442,7 @@ proofpay/
 │   ├── STANDARDS.md
 │   └── SUPPLY_CHAIN.md
 └── demo/
+    ├── live-evidence/                    # public recorded devnet fixture
     ├── prepare-zeroclaw-demo.sh
     ├── VIDEO_SCRIPT.md
     ├── run-demo.sh
@@ -449,9 +450,12 @@ proofpay/
 ```
 
 Runtime ledger and evidence outputs are local artifacts and should not be
-committed with sensitive business data. Ledger changes are serialized by a
-single-writer lock. Evidence is written as one exclusive bundle per invoice;
-rerunning `evidence` cannot overwrite an existing bundle.
+committed with sensitive business data. The sole exception is the reviewed
+public devnet fixture under `demo/live-evidence/`, which contains no secrets,
+customer data, wallet session, or deliverable contents. Ledger changes are
+serialized by a single-writer lock. Runtime evidence is written as one
+exclusive bundle per invoice; rerunning `evidence` cannot overwrite an
+existing bundle.
 
 ## Limitations
 
