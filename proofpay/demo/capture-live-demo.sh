@@ -82,7 +82,7 @@ spawn -noecho $env(PROOFPAY_VIDEO_ZEROCLAW) \
   agent --agent proofpay --log-level info \
   --message $env(PROOFPAY_VIDEO_MESSAGE)
 expect {
-  -re {Always for proofpay-demo__create_sample_request: *$} {
+  -re {proofpay-demo__create_sample_request: *$} {
     send -- "y\r"
     exp_continue
   }
