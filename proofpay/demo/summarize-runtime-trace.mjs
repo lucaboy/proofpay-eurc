@@ -171,8 +171,25 @@ const DEMO_URI =
   `&reference=${DEMO_REFERENCE}&label=ProofPay%20EURC` +
   `&message=ProofPay%20invoice%20${DEMO_ID}` +
   `&memo=PROOFPAY%3A${DEMO_ID}%3A4a3adafc3eeaa167`;
+// Stock ZeroClaw v0.8.3 applies its outbound secret redactor before recording
+// tool output. It preserves the complete public mint in result.mint but may
+// replace that same value only inside the URI with this deterministic form.
+const DEMO_URI_STOCK_REDACTED = DEMO_URI.replace(
+  EURC_MINT,
+  "Hzwq*[REDACTED]",
+);
 const PAYMENT_WINDOW_MS = 604_800_000;
 const SOLANA_SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{80,90}$/;
+
+function traceUriForm(value) {
+  if (value === DEMO_URI) {
+    return "canonical";
+  }
+  if (value === DEMO_URI_STOCK_REDACTED) {
+    return "stock-redacted-public-mint";
+  }
+  return null;
+}
 
 function isTimestamp(value) {
   return (
@@ -211,6 +228,7 @@ console.log(`tool=${expectedTool}`);
 console.log("dispatch=manifest-locked fixed wrapper");
 
 if (expectedTool === "proofpay-demo__preview_sample") {
+  const uriForm = traceUriForm(result?.solanaPayUri);
   if (
     result?.schemaVersion !== 3 ||
     result?.status !== "preview" ||
@@ -234,8 +252,8 @@ if (expectedTool === "proofpay-demo__preview_sample") {
     result?.approval?.schemaVersion !== 1 ||
     result?.approval?.deliverableSha256 !== DEMO_DIGEST ||
     result?.approval?.reference !== DEMO_REFERENCE ||
-    result?.approval?.solanaPayUri !== DEMO_URI ||
-    result?.solanaPayUri !== DEMO_URI ||
+    result?.approval?.solanaPayUri !== result?.solanaPayUri ||
+    uriForm === null ||
     Object.hasOwn(result, "createdAt") ||
     Object.hasOwn(result, "updatedAt") ||
     Object.hasOwn(result, "expiresAt") ||
@@ -248,11 +266,13 @@ if (expectedTool === "proofpay-demo__preview_sample") {
   console.log(`amount=${result.amount} ${result.currency} network=${result.network}`);
   console.log(`sha256=${result.deliverable.sha256}`);
   console.log(`reference=${result.reference}`);
+  console.log(`uri_trace_form=${uriForm}`);
   console.log(`solanaPayUri=${result.solanaPayUri}`);
   console.log("persistence=false payment=false");
 } else if (expectedTool === "proofpay-demo__create_sample_request") {
   const createdAt = Date.parse(result?.createdAt);
   const expiresAt = Date.parse(result?.expiresAt);
+  const uriForm = traceUriForm(result?.solanaPayUri);
   if (
     result?.schemaVersion !== 3 ||
     result?.id !== DEMO_ID ||
@@ -277,9 +297,9 @@ if (expectedTool === "proofpay-demo__preview_sample") {
     result?.approval?.kind !== "preview-match" ||
     result?.approval?.deliverableSha256 !== DEMO_DIGEST ||
     result?.approval?.reference !== DEMO_REFERENCE ||
-    result?.approval?.solanaPayUri !== DEMO_URI ||
+    result?.approval?.solanaPayUri !== result?.solanaPayUri ||
     result?.approval?.recordedAt !== result?.createdAt ||
-    result?.solanaPayUri !== DEMO_URI ||
+    uriForm === null ||
     !isTimestamp(result?.createdAt) ||
     !isTimestamp(result?.updatedAt) ||
     !isTimestamp(result?.expiresAt) ||
@@ -294,6 +314,7 @@ if (expectedTool === "proofpay-demo__preview_sample") {
   console.log(`amount=${result.amount} ${result.currency} network=${result.network}`);
   console.log(`sha256=${result.deliverable.sha256}`);
   console.log(`reference=${result.reference}`);
+  console.log(`uri_trace_form=${uriForm}`);
   console.log(`expiresAt=${result.expiresAt}`);
   console.log("payment=null (agent has no wallet or signing capability)");
 } else if (expectedTool === "proofpay-demo__check_sample_payment") {

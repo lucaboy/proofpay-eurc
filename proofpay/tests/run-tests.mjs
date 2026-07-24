@@ -1191,6 +1191,25 @@ test("Telegram trace summary requires channel and agent attribution", async () =
   assert.match(accepted.stdout, /native_tool_calls=1 parsed_tool_calls=1/);
   assert.match(accepted.stdout, /ordered_parse_start_result=true/);
 
+  const redactedCreateRecords = cloneRecords();
+  const redactedCreateResult = JSON.parse(
+    redactedCreateRecords[2].attributes.output,
+  );
+  redactedCreateResult.solanaPayUri = redactedCreateResult.solanaPayUri.replace(
+    "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+    "Hzwq*[REDACTED]",
+  );
+  redactedCreateResult.approval.solanaPayUri =
+    redactedCreateResult.solanaPayUri;
+  redactedCreateRecords[2].attributes.output =
+    JSON.stringify(redactedCreateResult);
+  await writeTrace(redactedCreateRecords);
+  const acceptedRedactedCreate = await summarize();
+  assert.match(
+    acceptedRedactedCreate.stdout,
+    /uri_trace_form=stock-redacted-public-mint/,
+  );
+
   const previewRecords = cloneRecords();
   const previewResult = JSON.parse(previewRecords[2].attributes.output);
   previewResult.status = "preview";
@@ -1218,6 +1237,32 @@ test("Telegram trace summary requires channel and agent attribution", async () =
   );
   assert.match(acceptedPreview.stdout, /result\.status=preview/);
   assert.match(acceptedPreview.stdout, /persistence=false payment=false/);
+
+  const redactedPreviewRecords = JSON.parse(JSON.stringify(previewRecords));
+  const redactedPreviewResult = JSON.parse(
+    redactedPreviewRecords[2].attributes.output,
+  );
+  redactedPreviewResult.solanaPayUri =
+    redactedPreviewResult.solanaPayUri.replace(
+      "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
+      "Hzwq*[REDACTED]",
+    );
+  redactedPreviewResult.approval.solanaPayUri =
+    redactedPreviewResult.solanaPayUri;
+  redactedPreviewRecords[2].attributes.output =
+    JSON.stringify(redactedPreviewResult);
+  await writeTrace(redactedPreviewRecords);
+  const acceptedRedactedPreview = await execFileAsync(process.execPath, [
+    traceSummarizerPath,
+    tracePath,
+    "proofpay-demo__preview_sample",
+    "--channel",
+    "telegram.proofpay",
+  ]);
+  assert.match(
+    acceptedRedactedPreview.stdout,
+    /uri_trace_form=stock-redacted-public-mint/,
+  );
 
   const wrongResultChannel = cloneRecords();
   wrongResultChannel[2].zeroclaw = {

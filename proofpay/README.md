@@ -130,9 +130,13 @@ native tool call, matching tool-start event, and actual successful fixed-helper
 result in that order, in the same ZeroClaw trace and iteration. For the
 Telegram capture, it additionally requires all three records to be attributed
 to `telegram.proofpay` and agent `proofpay`, and prints
-`ordered_parse_start_result=true`. This is reproducible evidence against model
-narration—not a cryptographic receipt, an external attestation, or a substitute
-for the visible approval gate.
+`ordered_parse_start_result=true`. If stock v0.8.3 redacts the public mint only
+inside the traced URI, the verifier accepts that one exact deterministic form,
+requires the separate full canonical mint/recipient/reference fields, and
+prints `uri_trace_form=stock-redacted-public-mint`; every other URI variation
+fails. This is reproducible evidence against model narration—not a
+cryptographic receipt, an external attestation, or a substitute for the visible
+approval gate.
 
 ## What gets bound
 

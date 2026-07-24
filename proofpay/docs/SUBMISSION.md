@@ -97,7 +97,9 @@ the same evidence bytes.
 - The channel trace verifier requires an ordered parsed-call → tool-start →
   successful-result chain in one trace and iteration, with
   `telegram.proofpay` plus agent `proofpay` attribution on all three records,
-  before the recorded dispatch claim passes.
+  before the recorded dispatch claim passes. It accepts the canonical URI or
+  only stock v0.8.3's exact public-mint-in-URI redaction while independently
+  requiring the complete mint, recipient, and reference fields.
 - The committed Telegram alias is disabled, token-free, non-persistent, and
   deny-by-default. The temporary BotFather token is entered masked, stored
   encrypted outside the checkout, revoked after capture, and never published.

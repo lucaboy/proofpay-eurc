@@ -37,7 +37,10 @@ Keep the native tool result visible. Highlight only:
 - invoice `demo-atlas-m3`;
 - 5 EURC on devnet and the Circle-listed mint;
 - exact deliverable SHA-256;
-- seven-day validity, reference, and Solana Pay URI;
+- seven-day validity and exact reference;
+- the canonical Solana Pay URI from the reviewed manifest/terminal verifier.
+  Stock ZeroClaw may visibly redact the public mint only inside the
+  Telegram/trace URI while preserving the complete `mint` field;
 - preview is non-persistent and no funds moved.
 
 ## 0:38–1:02 — Native inline approval
@@ -50,10 +53,13 @@ Create the one fixed ProofPay demo request with create_sample_request.
 
 Show ZeroClaw's native Telegram inline approval card. The stock card names the
 fixed wrapper but does not repeat its manifest-locked arguments, so compare the
-exact amount, digest, reference, and URI in the immediately preceding preview.
+exact amount, digest, and reference in the immediately preceding preview, plus
+the canonical URI in the reviewed fixed manifest. The trace verifier accepts
+only the full URI or ZeroClaw's one exact documented public-mint redaction.
 Tap the one-shot **Approve** action once, and never choose **Always**. Keep the
-real tool result visible: `pending`, exact reference/URI, `payment: null`, and
-expiry. State that the fixed wrapper is idempotent and cannot sign or submit.
+real tool result visible: `pending`, exact reference, verified URI trace form,
+`payment: null`, and expiry. State that the fixed wrapper is idempotent and
+cannot sign or submit.
 
 ## 1:02–1:27 — Independent payer
 

@@ -345,6 +345,14 @@ node ./proofpay/demo/summarize-runtime-trace.mjs \
   --channel telegram.proofpay
 ```
 
+Stock v0.8.3 runs its outbound redactor before recording tool output. It keeps
+the complete public EURC mint in `result.mint`, but may replace that same value
+only inside the URI with `Hzwq*[REDACTED]`. The verifier accepts either the
+byte-exact canonical URI or only that byte-exact stock form, requires the
+separate mint/recipient/reference fields to remain complete and canonical, and
+prints `uri_trace_form`. Any other shortening, key removal, label change, or
+mint substitution fails.
+
 The raw trace, encrypted token, paired user/chat identifiers, and session
 metadata remain private temporary artifacts. The direct CLI agent remains a
 fallback for environments without Telegram:
