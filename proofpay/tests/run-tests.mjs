@@ -49,6 +49,9 @@ const proofPayCli = fileURLToPath(
 const liveEvidencePath = fileURLToPath(
   new URL("../demo/live-evidence/evidence.json", import.meta.url),
 );
+const liveEvidenceReadmePath = fileURLToPath(
+  new URL("../demo/live-evidence/README.md", import.meta.url),
+);
 const liveDeliverablePath = fileURLToPath(
   new URL("../deliverables/sample-milestone.txt", import.meta.url),
 );
@@ -71,7 +74,7 @@ const demoToolManifestPath = fileURLToPath(
   new URL("../skills/proofpay-demo-tools/SKILL.toml", import.meta.url),
 );
 const LIVE_SIGNATURE =
-  "5Du1jycfRHexow5gWCpFoVyKtj26N2ika6W7DzFj7PS3V3k1AsX1TFY2psJsnmCT6Aknk4T2YLkc4MJUy3qYya6R";
+  "2PaJbnBowm4rbqMshwAygkLivwZ5yGc3uo1hELdTPaML8gfz1U49NWnnHu8mt3eLVxcN7euJviiXyAATxGCK1Fu";
 
 function test(name, fn) {
   tests.push({ name, fn });
@@ -424,9 +427,21 @@ test("committed live devnet evidence verifies from a clean checkout", async () =
     deliverablePath: liveDeliverablePath,
   });
   assert.equal(verified.ok, true);
-  assert.equal(verified.invoiceId, "demo-atlas-m2");
+  assert.equal(verified.invoiceId, "demo-atlas-m3");
   assert.equal(verified.paymentSignature, LIVE_SIGNATURE);
   assert.equal(verified.scope.onChainLookupPerformed, false);
+});
+
+test("public Explorer link is bound to the committed live signature", async () => {
+  const evidence = JSON.parse(await readFile(liveEvidencePath, "utf8"));
+  const evidenceReadme = await readFile(liveEvidenceReadmePath, "utf8");
+  assert.equal(evidence.payment.signature, LIVE_SIGNATURE);
+  assert.match(
+    evidenceReadme,
+    new RegExp(
+      `https://explorer\\.solana\\.com/tx/${LIVE_SIGNATURE}\\?cluster=devnet`,
+    ),
+  );
 });
 
 test("offline evidence verifier fails closed on artifact and evidence tampering", async () => {

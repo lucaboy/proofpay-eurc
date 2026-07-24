@@ -1,16 +1,16 @@
 {
   "schemaVersion": 3,
-  "generatedAt": "2026-07-23T14:47:06.656Z",
+  "generatedAt": "2026-07-24T00:18:03.332Z",
   "approval": {
     "schemaVersion": 1,
     "deliverableSha256": "4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8",
-    "reference": "6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y",
-    "solanaPayUri": "solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m2&memo=PROOFPAY%3Ademo-atlas-m2%3A4a3adafc3eeaa167",
+    "reference": "343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt",
+    "solanaPayUri": "solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m3&memo=PROOFPAY%3Ademo-atlas-m3%3A4a3adafc3eeaa167",
     "kind": "preview-match",
-    "recordedAt": "2026-07-23T14:46:42.543Z"
+    "recordedAt": "2026-07-24T00:16:17.602Z"
   },
   "invoice": {
-    "id": "demo-atlas-m2",
+    "id": "demo-atlas-m3",
     "network": "devnet",
     "currency": "EURC",
     "mint": "HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr",
@@ -18,10 +18,10 @@
     "amount": "5",
     "amountAtomic": "5000000",
     "validForSeconds": 604800,
-    "expiresAt": "2026-07-30T14:46:42.543Z",
-    "reference": "6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y",
-    "memo": "PROOFPAY:demo-atlas-m2:4a3adafc3eeaa167",
-    "solanaPayUri": "solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=6sBzayFYRP1zy7ECnCfLN1kUevFjtyfjgH5sUufuFS6y&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m2&memo=PROOFPAY%3Ademo-atlas-m2%3A4a3adafc3eeaa167"
+    "expiresAt": "2026-07-31T00:16:17.602Z",
+    "reference": "343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt",
+    "memo": "PROOFPAY:demo-atlas-m3:4a3adafc3eeaa167",
+    "solanaPayUri": "solana:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8?amount=5&spl-token=HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr&reference=343KZRYcEbERLtiSP4X41brhCtMNTDmLCbruDsTSxjkt&label=ProofPay%20EURC&message=ProofPay%20invoice%20demo-atlas-m3&memo=PROOFPAY%3Ademo-atlas-m3%3A4a3adafc3eeaa167"
   },
   "deliverable": {
     "path": "sample-milestone.txt",
@@ -29,13 +29,13 @@
     "sha256": "4a3adafc3eeaa1670c5acd78349af5db9755c89efa0f9015f9bc293392ec20c8"
   },
   "payment": {
-    "signature": "5Du1jycfRHexow5gWCpFoVyKtj26N2ika6W7DzFj7PS3V3k1AsX1TFY2psJsnmCT6Aknk4T2YLkc4MJUy3qYya6R",
-    "slot": 478344904,
-    "blockTime": 1784818004,
+    "signature": "2PaJbnBowm4rbqMshwAygkLivwZ5yGc3uo1hELdTPaML8gfz1U49NWnnHu8mt3eLVxcN7euJviiXyAATxGCK1Fu",
+    "slot": 478438145,
+    "blockTime": 1784852217,
     "confirmedAtomic": "5000000",
     "confirmedAmount": "5",
     "confirmationStatus": "finalized",
-    "verifiedAt": "2026-07-23T14:47:00.604Z",
+    "verifiedAt": "2026-07-24T00:17:29.712Z",
     "rpcUrl": "https://api.devnet.solana.com"
   },
   "assertions": {

@@ -205,7 +205,7 @@ def draw():
     canvas.drawString(margin, metrics_top, "Verified posture")
 
     metrics = [
-        ("42", "automated tests"),
+        ("43", "automated tests"),
         ("0", "wallet secrets"),
         ("DM", "Telegram channel"),
         ("v3", "evidence schema"),
